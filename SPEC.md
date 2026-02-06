@@ -71,7 +71,7 @@ The wavefolder sits before the filter, so the MS-20 can then shape (or pass thro
 
 ## 4. MS-20 Filter
 
-The core of the prototype. An oversampled Sallen-Key model with nonlinear feedback, emulating the Korg MS-20's characteristic aggressive, screaming filter behavior.
+The core of the prototype. An oversampled Korg 35 model (two cascaded one-pole filters with saturated feedback via TPT/ZDF method), emulating the Korg MS-20's characteristic aggressive, screaming filter behavior.
 
 ### 4.1 Parameters
 
@@ -250,7 +250,7 @@ With one voice and two effects, the Daisy Seed is barely working. This is ideal 
 src/
 ├── main.cpp               ← Daisy init, audio callback, MIDI CC handling
 ├── voice.h/.cpp           ← Saw osc + sub + wavefolder + MS-20 filter + envelope
-├── ms20_filter.h/.cpp     ← Oversampled Sallen-Key emulation
+├── ms20_filter.h/.cpp     ← Oversampled Korg 35 emulation
 ├── fx_chain.h/.cpp        ← Chorus → Reverb with serial crossfade
 └── params.h               ← 8 CC values, hardcoded defaults, scaling curves
 ```

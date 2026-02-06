@@ -46,8 +46,10 @@ void Voice::NoteOn(int midi_note) {
     filter_.Reset();
 }
 
-void Voice::NoteOff() {
-    gate_ = false;
+void Voice::NoteOff(int midi_note) {
+    if (midi_note == midi_note_) {
+        gate_ = false;
+    }
 }
 
 // -------------------------------------------------------------------------
@@ -74,11 +76,12 @@ float Voice::Wavefold(float in, float amount) {
     // Gain stage: 1x at 0%, 6x at 100%
     float gained = in * (1.0f + amount * 5.0f);
 
-    // Fold: bounce off ±1 boundaries
-    while (gained > 1.0f || gained < -1.0f) {
-        if (gained > 1.0f)  gained = 2.0f - gained;
-        if (gained < -1.0f) gained = -2.0f - gained;
-    }
+    // Closed-form triangle-wave fold: O(1), NaN/inf-safe
+    // Maps any value into [-1, +1] by "bouncing" off boundaries.
+    // Equivalent to a triangle wave with period 4 and amplitude 1.
+    gained = gained + 1.0f;                     // shift to [0, 4) range center
+    gained = gained - 4.0f * std::floor(gained * 0.25f);  // wrap to [0, 4)
+    gained = std::fabs(gained - 2.0f) - 1.0f;  // triangle: [0,4) → [-1,+1]
     return gained;
 }
 

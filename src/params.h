@@ -19,16 +19,6 @@ constexpr int CC_FX       = 8;
 // MIDI channel (0-indexed, so channel 1 = 0)
 constexpr int MIDI_CHANNEL = 0;
 
-// Hardcoded defaults
-constexpr float DEFAULT_CUTOFF       = 1000.0f;  // Hz
-constexpr float DEFAULT_DRIVE        = 0.0f;     // 0-1
-constexpr float DEFAULT_SUB_LEVEL    = 0.0f;     // 0-1
-constexpr float DEFAULT_FOLD_AMOUNT  = 0.0f;     // 0-1
-constexpr float DEFAULT_DECAY_TIME   = 0.3f;     // seconds
-constexpr float DEFAULT_AMP_ENV      = 1.0f;     // full envelope
-constexpr float DEFAULT_FILT_ENV     = 0.0f;     // no filter envelope
-constexpr float DEFAULT_FX_MIX       = 0.0f;     // dry
-
 constexpr float ENV_ATTACK_S       = 0.005f;  // 5 ms, always
 constexpr float ENV_SUSTAIN        = 0.0f;    // pure AD envelope
 constexpr float KEY_TRACKING       = 0.5f;    // 50% key tracking
@@ -77,28 +67,28 @@ inline float ScaleFilterEnvDepth(float cc_norm) {
 
 struct Params {
     // Raw 0-1 normalized CC values
-    float cc_cutoff   = 0.5f;   // CC 1  → ~424 Hz default
-    float cc_drive    = 0.0f;   // CC 2
-    float cc_sub      = 0.0f;   // CC 3
-    float cc_fold     = 0.0f;   // CC 4
-    float cc_decay    = 0.3f;   // CC 5
-    float cc_amp_env  = 1.0f;   // CC 6
-    float cc_filt_env = 0.0f;   // CC 7
-    float cc_fx       = 0.0f;   // CC 8
+    float cc_cutoff   = 0.5f;            // CC 1  (64/127)
+    float cc_drive    = 32.0f / 127.0f;  // CC 2  (32/127)
+    float cc_sub      = 76.0f / 127.0f;  // CC 3  (76/127)
+    float cc_fold     = 25.0f / 127.0f;  // CC 4  (25/127)
+    float cc_decay    = 40.0f / 127.0f;  // CC 5  (40/127)
+    float cc_amp_env  = 100.0f / 127.0f; // CC 6  (100/127)
+    float cc_filt_env = 76.0f / 127.0f;  // CC 7  (76/127)
+    float cc_fx       = 0.0f;            // CC 8  (0/127)
 
     // Pitch bend: -1 to +1
     float pitch_bend = 0.0f;
 
-    // Derived parameters (call Update() after changing CCs)
-    float cutoff_hz      = DEFAULT_CUTOFF;
-    float drive          = DEFAULT_DRIVE;
+    // Derived parameters — set by Update() before audio starts
+    float cutoff_hz      = 0.0f;
+    float drive          = 0.0f;
     float resonance      = 0.0f;
-    float sub_level      = DEFAULT_SUB_LEVEL;
-    float fold_amount    = DEFAULT_FOLD_AMOUNT;
-    float decay_time     = DEFAULT_DECAY_TIME;
-    float amp_env_depth  = DEFAULT_AMP_ENV;
-    float filt_env_depth = DEFAULT_FILT_ENV;
-    float fx_mix         = DEFAULT_FX_MIX;
+    float sub_level      = 0.0f;
+    float fold_amount    = 0.0f;
+    float decay_time     = 0.0f;
+    float amp_env_depth  = 0.0f;
+    float filt_env_depth = 0.0f;
+    float fx_mix         = 0.0f;
 
     // Recalculate derived values from raw CCs
     void Update() {

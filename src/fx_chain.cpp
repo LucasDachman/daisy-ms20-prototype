@@ -43,7 +43,7 @@ float FxChain::Process(float in, float fx_mix) {
 
     // Second half: crossfade chorus → reverb
     float rev_outL, rev_outR;
-    reverb_.Process(in, in, &rev_outL, &rev_outR);
+    reverb_.Process(chorus_out, chorus_out, &rev_outL, &rev_outR);
     float rev_mono = (rev_outL + rev_outR) * 0.5f;
 
     float wet = (fx_mix - 0.5f) * 2.0f;  // 0-1 over the 0.5-1.0 range

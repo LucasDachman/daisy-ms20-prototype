@@ -13,8 +13,8 @@ public:
     // Trigger a new note
     void NoteOn(int midi_note);
 
-    // Release the current note
-    void NoteOff();
+    // Release the current note (only if note matches)
+    void NoteOff(int midi_note);
 
     // Process one sample. Reads parameters from the provided Params struct.
     float Process(const Params& p);

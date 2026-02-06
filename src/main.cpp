@@ -58,14 +58,16 @@ static void HandleMidiMessage(const MidiEvent& event) {
                 voice.NoteOn(note.note);
             } else {
                 // Velocity 0 = note off (per MIDI spec)
-                voice.NoteOff();
+                voice.NoteOff(note.note);
             }
             break;
         }
 
-        case NoteOff:
-            voice.NoteOff();
+        case NoteOff: {
+            auto note = event.AsNoteOn();
+            voice.NoteOff(note.note);
             break;
+        }
 
         case ControlChange: {
             auto cc = event.AsControlChange();

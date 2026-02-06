@@ -24,10 +24,14 @@
 #include <cmath>
 #include <algorithm>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 class Korg35LPF {
 public:
     void Init(float sample_rate) {
-        sr_ = sample_rate;
+        sr_ = sample_rate * 2.0f;  // 2x oversampling: internal rate is 96 kHz
         s1_ = 0.0f;
         s2_ = 0.0f;
         s3_ = 0.0f;
@@ -56,8 +60,22 @@ public:
         saturation_ = 1.0f + drive * 7.0f;
     }
 
-    // Process one sample
+    // Process one sample (2x oversampled internally)
     float Process(float in) {
+        ProcessSample(in);
+        return ProcessSample(in);
+    }
+
+    // Clear state on note-on to prevent clicks
+    void Reset() {
+        s1_ = 0.0f;
+        s2_ = 0.0f;
+        s3_ = 0.0f;
+    }
+
+private:
+    // Single tick of the Korg 35 filter core at the oversampled rate
+    float ProcessSample(float in) {
         float G = g_ / (1.0f + g_);
 
         // Resolve delay-free feedback loop algebraically
@@ -76,19 +94,20 @@ public:
         // Feedback state
         s3_ = lp2;
 
+        // Flush denormals to prevent FPU slowdown during release tails
+        s1_ = FlushDenormal(s1_);
+        s2_ = FlushDenormal(s2_);
+        s3_ = FlushDenormal(s3_);
+
         return lp2;
     }
 
-    // Clear state on note-on to prevent clicks
-    void Reset() {
-        s1_ = 0.0f;
-        s2_ = 0.0f;
-        s3_ = 0.0f;
-    }
-
-private:
     float Saturate(float x) {
         return std::tanh(saturation_ * x);
+    }
+
+    static float FlushDenormal(float x) {
+        return (std::fabs(x) < 1e-20f) ? 0.0f : x;
     }
 
     float sr_;
