@@ -19,5 +19,9 @@ CPP_SOURCES = \
 C_INCLUDES += -Isrc
 
 # Use the standard Daisy build system
+LIBDAISY_DIR = $(DAISYEXAMPLES_DIR)/libDaisy
+DAISYSP_DIR = $(DAISYEXAMPLES_DIR)/DaisySP
+USE_DAISYSP_LGPL = 1
+CPP_STANDARD = -std=gnu++17
 SYSTEM_FILES_DIR = $(DAISYEXAMPLES_DIR)/libDaisy/core
 include $(SYSTEM_FILES_DIR)/Makefile

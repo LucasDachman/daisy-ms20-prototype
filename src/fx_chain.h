@@ -10,6 +10,7 @@
 //
 
 #include "daisysp.h"
+#include "Effects/reverbsc.h"
 
 class FxChain {
 public:

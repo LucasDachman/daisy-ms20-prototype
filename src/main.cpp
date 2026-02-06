@@ -47,7 +47,7 @@ static void AudioCallback(AudioHandle::InputBuffer in,
 // ---------------------------------------------------------------------------
 // MIDI message handling
 // ---------------------------------------------------------------------------
-static void HandleMidiMessage(const MidiEvent& event) {
+static void HandleMidiMessage(MidiEvent event) {
     // Filter to channel 1 only (0-indexed)
     if (event.channel != MIDI_CHANNEL) return;
 
@@ -71,7 +71,7 @@ static void HandleMidiMessage(const MidiEvent& event) {
 
         case ControlChange: {
             auto cc = event.AsControlChange();
-            params.HandleCC(cc.control, cc.value);
+            params.HandleCC(cc.control_number, cc.value);
             break;
         }
 
