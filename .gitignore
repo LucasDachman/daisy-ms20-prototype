@@ -1,0 +1,9 @@
+build/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+.vscode/settings.json

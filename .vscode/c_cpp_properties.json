@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Daisy Seed",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/../DaisyExamples/libDaisy/src",
+                "${workspaceFolder}/../DaisyExamples/libDaisy/src/**",
+                "${workspaceFolder}/../DaisyExamples/DaisySP/Source",
+                "${workspaceFolder}/../DaisyExamples/DaisySP/Source/**",
+                "${workspaceFolder}/../DaisyExamples/libDaisy/Drivers/CMSIS/Include"
+            ],
+            "defines": [
+                "STM32H750xx",
+                "USE_HAL_DRIVER",
+                "__FPU_PRESENT=1"
+            ],
+            "compilerPath": "arm-none-eabi-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,30 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "make",
+            "args": ["-j4"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "make",
+            "args": ["clean"]
+        },
+        {
+            "label": "flash (DFU)",
+            "type": "shell",
+            "command": "make",
+            "args": ["program-dfu"],
+            "dependsOn": "build",
+            "problemMatcher": []
+        }
+    ]
+}
