@@ -42,7 +42,10 @@ void Voice::NoteOn(int midi_note) {
     note_freq_ = MidiToFreq(midi_note);
     gate_ = true;
 
-    // Reset filter state to prevent clicks from previous note's residue
+    // Reset everything so each note starts clean
+    saw_phase_ = 0.0f;
+    sub_phase_ = 0.0f;
+    env_value_ = 0.0f;
     filter_.Reset();
 }
 
@@ -174,8 +177,9 @@ float Voice::Process(const Params& p) {
     float filtered = filter_.Process(folded);
 
     // --- Amp envelope ---
-    // depth=1: full envelope (percussive). depth=0: constant amp (organ).
-    float amp = 1.0f - p.amp_env_depth * (1.0f - env);
+    // Multiply by env so amp is always 0 when envelope is 0 (no clicks).
+    // depth=1: fully percussive. depth=0: env acts as a simple gate.
+    float amp = env * (1.0f - p.amp_env_depth * (1.0f - env));
 
     return filtered * amp;
 }

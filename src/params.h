@@ -19,7 +19,7 @@ constexpr int CC_FX       = 8;
 // MIDI channel (0-indexed, so channel 1 = 0)
 constexpr int MIDI_CHANNEL = 0;
 
-constexpr float ENV_ATTACK_S       = 0.005f;  // 5 ms, always
+constexpr float ENV_ATTACK_S       = 0.002f;  // 2 ms, always
 constexpr float ENV_SUSTAIN        = 0.0f;    // pure AD envelope
 constexpr float KEY_TRACKING       = 0.5f;    // 50% key tracking
 

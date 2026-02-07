@@ -19,7 +19,7 @@ public:
     // Process one sample. Reads parameters from the provided Params struct.
     float Process(const Params& p);
 
-    bool IsActive() const { return gate_ || env_value_ > 0.001f; }
+    bool IsActive() const { return gate_ || env_value_ > 1e-6f; }
 
 private:
     // PolyBLEP residual for antialiased saw
