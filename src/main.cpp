@@ -39,6 +39,9 @@ static void AudioCallback(AudioHandle::InputBuffer in,
         // FX: chorus → reverb crossfade
         sig = fx.Process(sig, params.fx_mix);
 
+        // Output gain
+        sig *= OUTPUT_GAIN;
+
         // Mono out (same signal on both channels)
         out[0][i] = sig;
         out[1][i] = sig;

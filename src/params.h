@@ -30,6 +30,7 @@ constexpr float REVERB_FEEDBACK    = 0.70f;   // "size"
 constexpr float REVERB_LP_FREQ     = 4000.0f; // dark tail
 
 constexpr float PITCH_BEND_RANGE   = 2.0f;    // semitones
+constexpr float OUTPUT_GAIN        = 5.0f;    // output level boost
 
 // -------------------------------------------------------------------------
 // CC Scaling Functions
@@ -68,12 +69,12 @@ inline float ScaleFilterEnvDepth(float cc_norm) {
 struct Params {
     // Raw 0-1 normalized CC values
     float cc_cutoff   = 0.5f;            // CC 1  (64/127)
-    float cc_drive    = 32.0f / 127.0f;  // CC 2  (32/127)
+    float cc_drive    = 10.0f / 127.0f;  // CC 2  (10/127)
     float cc_sub      = 76.0f / 127.0f;  // CC 3  (76/127)
-    float cc_fold     = 25.0f / 127.0f;  // CC 4  (25/127)
+    float cc_fold     = 0.0f / 127.0f;   // CC 4  (0/127)
     float cc_decay    = 40.0f / 127.0f;  // CC 5  (40/127)
     float cc_amp_env  = 100.0f / 127.0f; // CC 6  (100/127)
-    float cc_filt_env = 76.0f / 127.0f;  // CC 7  (76/127)
+    float cc_filt_env = 20.0f / 127.0f;  // CC 7  (20/127)
     float cc_fx       = 0.0f;            // CC 8  (0/127)
 
     // Pitch bend: -1 to +1
