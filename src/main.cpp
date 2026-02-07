@@ -1,8 +1,8 @@
 // =============================================================================
 // main.cpp — DaisyMS20 Prototype
 // =============================================================================
-// Monophonic MS-20 filter synth. UART MIDI in on D14, audio out on pin 18.
-// 8 MIDI CCs control everything. See README.md for details.
+// Monophonic MS-20 filter synth. MIDI in via USB and UART (D14).
+// Audio out on pin 18. 8 MIDI CCs control everything. See README.md.
 // =============================================================================
 
 #include "daisy_seed.h"
@@ -17,7 +17,8 @@ using namespace daisy;
 // Global objects
 // ---------------------------------------------------------------------------
 static DaisySeed hw;
-static MidiUartHandler midi;
+static MidiUartHandler midi_uart;
+static MidiUsbHandler  midi_usb;
 static Voice voice;
 static Params params;
 
@@ -103,21 +104,31 @@ int main(void) {
     params.Update();
 
     // MIDI: UART on pin D14 (USART1 RX)
-    MidiUartHandler::Config midi_cfg;
-    midi_cfg.transport_config.rx = DaisySeed::GetPin(14);
-    midi_cfg.transport_config.periph =
+    MidiUartHandler::Config uart_cfg;
+    uart_cfg.transport_config.rx = DaisySeed::GetPin(14);
+    uart_cfg.transport_config.periph =
         UartHandler::Config::Peripheral::USART_1;
-    midi.Init(midi_cfg);
-    midi.StartReceive();
+    midi_uart.Init(uart_cfg);
+    midi_uart.StartReceive();
+
+    // MIDI: USB (class-compliant, no driver needed)
+    MidiUsbHandler::Config usb_cfg;
+    midi_usb.Init(usb_cfg);
+    midi_usb.StartReceive();
 
     // Start audio
     hw.StartAudio(AudioCallback);
 
-    // Main loop: poll MIDI
+    // Main loop: poll both MIDI inputs
     while (1) {
-        midi.Listen();
-        while (midi.HasEvents()) {
-            HandleMidiMessage(midi.PopEvent());
+        midi_uart.Listen();
+        while (midi_uart.HasEvents()) {
+            HandleMidiMessage(midi_uart.PopEvent());
+        }
+
+        midi_usb.Listen();
+        while (midi_usb.HasEvents()) {
+            HandleMidiMessage(midi_usb.PopEvent());
         }
     }
 }
