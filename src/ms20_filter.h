@@ -39,7 +39,7 @@ public:
         SetCutoff(1000.0f);
         SetResonance(0.0f);
         SetDrive(0.0f);
-        saturation_ = 1.0f;
+        input_gain_ = 1.0f;
     }
 
     // Cutoff frequency in Hz. Range: 20 – sr/2.
@@ -48,22 +48,23 @@ public:
         g_ = std::tan(static_cast<float>(M_PI) * freq / sr_);
     }
 
-    // Resonance: 0.0 = none, 1.0 = self-oscillation.
+    // Resonance: 0.0 = none, 1.0 = screaming.
     void SetResonance(float res) {
         res = std::clamp(res, 0.0f, 1.0f);
-        K_ = res * 2.0f;
+        K_ = res * 12.0f;
     }
 
-    // Drive: 0.0 = clean, 1.0 = heavy saturation in feedback path.
+    // Drive: 0.0 = clean, 1.0 = heavy saturation.
     void SetDrive(float drive) {
         drive = std::clamp(drive, 0.0f, 1.0f);
-        saturation_ = 1.0f + drive * 7.0f;
+        input_gain_ = 1.0f + drive * 1.0f;
     }
 
     // Process one sample (2x oversampled internally)
     float Process(float in) {
-        ProcessSample(in);
-        return ProcessSample(in);
+        float boosted = in * input_gain_;
+        ProcessSample(boosted);
+        return ProcessSample(boosted);
     }
 
     // Clear state on note-on to prevent clicks
@@ -103,7 +104,8 @@ private:
     }
 
     float Saturate(float x) {
-        return std::tanh(saturation_ * x);
+        // Hard clip at ±3: buzzy, aggressive resonance (MS-20 OTA character)
+        return std::max(-3.0f, std::min(3.0f, x));
     }
 
     static float FlushDenormal(float x) {
@@ -113,7 +115,7 @@ private:
     float sr_;
     float g_;
     float K_;
-    float saturation_;
+    float input_gain_;
 
     float s1_;  // LPF1 state
     float s2_;  // LPF2 state

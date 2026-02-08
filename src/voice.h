@@ -28,8 +28,8 @@ private:
     // Wavefolder: symmetric, stateless
     float Wavefold(float in, float amount);
 
-    // Simple AD envelope (one-pole smoothed)
-    float ProcessEnvelope(float attack_s, float decay_s);
+    // Simple ADSR envelope (one-pole smoothed)
+    float ProcessEnvelope(float attack_s, float decay_s, float sustain, float release_s);
 
     float sr_;
     float inv_sr_;

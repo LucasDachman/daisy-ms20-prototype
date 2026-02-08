@@ -30,16 +30,15 @@ constexpr float REVERB_FEEDBACK    = 0.70f;   // "size"
 constexpr float REVERB_LP_FREQ     = 4000.0f; // dark tail
 
 constexpr float PITCH_BEND_RANGE   = 2.0f;    // semitones
-constexpr float OUTPUT_GAIN        = 5.0f;    // output level boost
+constexpr float OUTPUT_GAIN        = 1.2f;    // moderate gain, peaks clip at DAC naturally
 
 // -------------------------------------------------------------------------
 // CC Scaling Functions
 // -------------------------------------------------------------------------
 
-// CC 1 → Filter cutoff (20 Hz – 18 kHz, exponential)
+// CC 1 → Filter cutoff (5 Hz – 18 kHz, exponential)
 inline float ScaleCutoff(float cc_norm) {
-    // Attempt exponential mapping: 20 * (18000/20)^cc = 20 * 900^cc
-    return 20.0f * std::pow(900.0f, cc_norm);
+    return 5.0f * std::pow(18000.0f / 5.0f, cc_norm);
 }
 
 // CC 2 → Drive (fast ramp: x^0.6)
@@ -47,19 +46,22 @@ inline float ScaleDrive(float cc_norm) {
     return std::pow(cc_norm, 0.6f);
 }
 
-// CC 2 → Resonance (slow ramp: x^1.8 * 0.85, capped)
+// CC 2 → Resonance (exponential — gentle low end, screaming top end)
 inline float ScaleResonance(float cc_norm) {
-    return std::pow(cc_norm, 1.8f) * 0.85f;
+    // exp curve: most of the range is subtle, top 25% is aggressive
+    return (std::exp(3.0f * cc_norm) - 1.0f) / (std::exp(3.0f) - 1.0f);
 }
 
-// CC 5 → Decay time (30 ms – 5 s, exponential)
+// CC 5 → Decay time (30 ms – 5 s, x^3 * range for short-decay resolution)
 inline float ScaleDecay(float cc_norm) {
-    return 0.03f * std::pow(5.0f / 0.03f, cc_norm);
+    float curved = cc_norm * cc_norm * cc_norm;
+    return 0.03f + curved * (5.0f - 0.03f);
 }
 
-// CC 7 → Filter envelope depth in Hz (maps 0-1 to 0-18000 Hz additive range)
+// CC 7 → Filter envelope depth (0 = no effect, 1 = full envelope sweep)
+// x^3 curve: more resolution at low depths, still reaches 1.0 at max
 inline float ScaleFilterEnvDepth(float cc_norm) {
-    return cc_norm * 18000.0f;
+    return cc_norm * cc_norm * cc_norm;
 }
 
 // -------------------------------------------------------------------------

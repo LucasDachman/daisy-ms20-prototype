@@ -5,6 +5,7 @@
 // Audio out on pin 18. 8 MIDI CCs control everything. See README.md.
 // =============================================================================
 
+#include <cmath>
 #include "daisy_seed.h"
 #include "daisysp.h"
 #include "voice.h"
@@ -39,7 +40,7 @@ static void AudioCallback(AudioHandle::InputBuffer in,
         // FX: chorus → reverb crossfade
         sig = fx.Process(sig, params.fx_mix);
 
-        // Output gain
+        // Output gain (no soft clip — let resonance peaks clip naturally)
         sig *= OUTPUT_GAIN;
 
         // Mono out (same signal on both channels)

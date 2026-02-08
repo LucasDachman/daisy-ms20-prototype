@@ -91,7 +91,7 @@ float Voice::Wavefold(float in, float amount) {
 // -------------------------------------------------------------------------
 // Simple AD envelope with one-pole smoothing
 // -------------------------------------------------------------------------
-float Voice::ProcessEnvelope(float attack_s, float decay_s) {
+float Voice::ProcessEnvelope(float attack_s, float decay_s, float sustain, float release_s) {
     float target;
     float time_s;
 
@@ -101,14 +101,14 @@ float Voice::ProcessEnvelope(float attack_s, float decay_s) {
             target = 1.0f;
             time_s = attack_s;
         } else {
-            // Decay phase: ramp to sustain (0.0 for AD envelope)
-            target = ENV_SUSTAIN;
+            // Decay phase: ramp to sustain level
+            target = sustain;
             time_s = decay_s;
         }
     } else {
         // Release phase: ramp to 0.0
         target = 0.0f;
-        time_s = decay_s;  // release = decay
+        time_s = release_s;
     }
 
     // One-pole coefficient: 1 - e^(-1 / (time * sr))
@@ -153,7 +153,10 @@ float Voice::Process(const Params& p) {
     float folded = Wavefold(mix, p.fold_amount);
 
     // --- Envelope ---
-    float env = ProcessEnvelope(ENV_ATTACK_S, p.decay_time);
+    // depth=0: gate (sustain=1, instant release). depth=1: full AD envelope.
+    float sustain = 1.0f - p.amp_env_depth;
+    float release = std::max(0.002f, p.amp_env_depth * p.decay_time);
+    float env = ProcessEnvelope(ENV_ATTACK_S, p.decay_time, sustain, release);
 
     // --- MS-20 Filter ---
     // Cutoff with key tracking and envelope modulation
@@ -164,11 +167,13 @@ float Voice::Process(const Params& p) {
     float tracking_mult = std::pow(2.0f, KEY_TRACKING * semitones_from_c4 / 12.0f);
     float mod_cutoff = base_cutoff * tracking_mult;
 
-    // Envelope → filter (additive Hz, scaled by depth)
-    mod_cutoff += env * p.filt_env_depth;
+    // Envelope → filter (sweeps UP from cutoff knob toward 10 kHz)
+    // depth=0: no effect, depth=1: envelope opens filter fully
+    float headroom = std::max(0.0f, 10000.0f - mod_cutoff);
+    mod_cutoff += env * p.filt_env_depth * headroom;
 
     // Clamp to valid range
-    mod_cutoff = std::clamp(mod_cutoff, 20.0f, sr_ * 0.49f);
+    mod_cutoff = std::clamp(mod_cutoff, 5.0f, sr_ * 0.49f);
 
     filter_.SetCutoff(mod_cutoff);
     filter_.SetResonance(p.resonance);
@@ -176,10 +181,8 @@ float Voice::Process(const Params& p) {
 
     float filtered = filter_.Process(folded);
 
-    // --- Amp envelope ---
-    // Multiply by env so amp is always 0 when envelope is 0 (no clicks).
-    // depth=1: fully percussive. depth=0: env acts as a simple gate.
-    float amp = env * (1.0f - p.amp_env_depth * (1.0f - env));
+    // --- Amp ---
+    float amp = env;
 
     return filtered * amp;
 }
