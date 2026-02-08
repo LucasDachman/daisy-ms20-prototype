@@ -170,7 +170,8 @@ float Voice::Process(const Params& p) {
     // Envelope → filter (sweeps UP from cutoff knob toward 10 kHz)
     // depth=0: no effect, depth=1: envelope opens filter fully
     float headroom = std::max(0.0f, 10000.0f - mod_cutoff);
-    mod_cutoff += env * p.filt_env_depth * headroom;
+    float filt_env = env * env;  // squared: filter closes faster than amp
+    mod_cutoff += filt_env * p.filt_env_depth * headroom;
 
     // Clamp to valid range
     mod_cutoff = std::clamp(mod_cutoff, 5.0f, sr_ * 0.49f);
