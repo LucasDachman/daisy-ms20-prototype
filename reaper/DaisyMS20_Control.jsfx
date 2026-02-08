@@ -1,0 +1,72 @@
+desc:DaisyMS20 Control
+//tags: MIDI utility synth controller
+//author: Lucas
+
+// =============================================================================
+// 8-slider MIDI CC controller for the DaisyMS20 synth.
+// Drop this on a MIDI track routed to the Daisy Seed.
+// All MIDI (notes, pitch bend, etc.) passes through.
+// =============================================================================
+
+slider1:127<0,127,1>Cutoff (CC 1)
+slider2:0<0,127,1>Drive / Resonance (CC 2)
+slider3:40<0,127,1>Sub Level (CC 3)
+slider4:0<0,127,1>Wavefold (CC 4)
+slider5:40<0,127,1>Decay (CC 5)
+slider6:127<0,127,1>Amp Envelope (CC 6)
+slider7:0<0,127,1>Filter Envelope (CC 7)
+slider8:0<0,127,1>FX Mix (CC 8)
+
+@init
+// Previous slider values — initialized to -1 so first @block sends all CCs
+prev1 = -1;
+prev2 = -1;
+prev3 = -1;
+prev4 = -1;
+prev5 = -1;
+prev6 = -1;
+prev7 = -1;
+prev8 = -1;
+
+// MIDI channel 0 = channel 1 in human terms
+midi_ch = 0;
+
+@block
+// Pass through all incoming MIDI events unchanged
+while (midirecv(offset, msg1, msg23)) (
+  midisend(offset, msg1, msg23);
+);
+
+// Send CCs for any sliders that changed (midisend only works in @block)
+(slider1 != prev1) ? (
+  midisend(0, 0xB0 | midi_ch, 1 | (slider1 << 8));
+  prev1 = slider1;
+);
+(slider2 != prev2) ? (
+  midisend(0, 0xB0 | midi_ch, 2 | (slider2 << 8));
+  prev2 = slider2;
+);
+(slider3 != prev3) ? (
+  midisend(0, 0xB0 | midi_ch, 3 | (slider3 << 8));
+  prev3 = slider3;
+);
+(slider4 != prev4) ? (
+  midisend(0, 0xB0 | midi_ch, 4 | (slider4 << 8));
+  prev4 = slider4;
+);
+(slider5 != prev5) ? (
+  midisend(0, 0xB0 | midi_ch, 5 | (slider5 << 8));
+  prev5 = slider5;
+);
+(slider6 != prev6) ? (
+  midisend(0, 0xB0 | midi_ch, 6 | (slider6 << 8));
+  prev6 = slider6;
+);
+(slider7 != prev7) ? (
+  midisend(0, 0xB0 | midi_ch, 7 | (slider7 << 8));
+  prev7 = slider7;
+);
+(slider8 != prev8) ? (
+  midisend(0, 0xB0 | midi_ch, 8 | (slider8 << 8));
+  prev8 = slider8;
+);
