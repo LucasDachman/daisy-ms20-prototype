@@ -55,14 +55,18 @@ static void HandleMidiMessage(MidiEvent event) {
     // Filter to channel 1 only (0-indexed)
     if (event.channel != MIDI_CHANNEL) return;
 
+    // Blink LED on any MIDI message
+    hw.SetLed(true);
+
     switch (event.type) {
         case NoteOn: {
             auto note = event.AsNoteOn();
             if (note.velocity > 0) {
                 voice.NoteOn(note.note);
+                hw.SetLed(true);
             } else {
-                // Velocity 0 = note off (per MIDI spec)
                 voice.NoteOff(note.note);
+                hw.SetLed(false);
             }
             break;
         }
@@ -70,6 +74,7 @@ static void HandleMidiMessage(MidiEvent event) {
         case NoteOff: {
             auto note = event.AsNoteOn();
             voice.NoteOff(note.note);
+            hw.SetLed(false);
             break;
         }
 

@@ -68,14 +68,14 @@ inline float ScaleFilterEnvDepth(float cc_norm) {
 
 struct Params {
     // Raw 0-1 normalized CC values
-    float cc_cutoff   = 0.5f;            // CC 1  (64/127)
-    float cc_drive    = 10.0f / 127.0f;  // CC 2  (10/127)
-    float cc_sub      = 76.0f / 127.0f;  // CC 3  (76/127)
-    float cc_fold     = 0.0f / 127.0f;   // CC 4  (0/127)
+    float cc_cutoff   = 1.0f;            // CC 1  (127/127) fully open
+    float cc_drive    = 0.0f;            // CC 2  (0/127)   no drive
+    float cc_sub      = 40.0f / 127.0f;  // CC 3  (40/127)  light sub
+    float cc_fold     = 0.0f;            // CC 4  (0/127)   no fold
     float cc_decay    = 40.0f / 127.0f;  // CC 5  (40/127)
-    float cc_amp_env  = 100.0f / 127.0f; // CC 6  (100/127)
-    float cc_filt_env = 20.0f / 127.0f;  // CC 7  (20/127)
-    float cc_fx       = 0.0f;            // CC 8  (0/127)
+    float cc_amp_env  = 1.0f;            // CC 6  (127/127) full envelope
+    float cc_filt_env = 0.0f;            // CC 7  (0/127)   no filter env
+    float cc_fx       = 0.0f;            // CC 8  (0/127)   dry
 
     // Pitch bend: -1 to +1
     float pitch_bend = 0.0f;
