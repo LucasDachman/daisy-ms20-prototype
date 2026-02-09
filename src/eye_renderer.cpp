@@ -25,6 +25,8 @@ void EyeRenderer::Init() {
     gate_ = false;
     ripple_phase_ = 0.0f;
     std::memset(ripple_offsets_, 0, sizeof(ripple_offsets_));
+    pupil_cx_ = EYE_CX;
+    pupil_cy_ = EYE_CY;
     frame_count_ = 0;
 }
 
@@ -147,10 +149,10 @@ void EyeRenderer::DrawIris() {
     int r2_outer = r_outer * r_outer;
     int r2_inner = r_inner * r_inner;
 
-    for (int y = EYE_CY - r_outer; y <= EYE_CY + r_outer; y++) {
-        for (int x = EYE_CX - r_outer; x <= EYE_CX + r_outer; x++) {
-            int dx = x - EYE_CX;
-            int dy = y - EYE_CY;
+    for (int y = pupil_cy_ - r_outer; y <= pupil_cy_ + r_outer; y++) {
+        for (int x = pupil_cx_ - r_outer; x <= pupil_cx_ + r_outer; x++) {
+            int dx = x - pupil_cx_;
+            int dy = y - pupil_cy_;
             int d2 = dx * dx + dy * dy;
             if (d2 <= r2_outer && d2 >= r2_inner) {
                 PxClear(x, y);
@@ -163,10 +165,10 @@ void EyeRenderer::DrawIris() {
 
 void EyeRenderer::ClearPupil(int pupil_r) {
     int r2 = pupil_r * pupil_r;
-    for (int y = EYE_CY - pupil_r; y <= EYE_CY + pupil_r; y++) {
-        for (int x = EYE_CX - pupil_r; x <= EYE_CX + pupil_r; x++) {
-            int dx = x - EYE_CX;
-            int dy = y - EYE_CY;
+    for (int y = pupil_cy_ - pupil_r; y <= pupil_cy_ + pupil_r; y++) {
+        for (int x = pupil_cx_ - pupil_r; x <= pupil_cx_ + pupil_r; x++) {
+            int dx = x - pupil_cx_;
+            int dy = y - pupil_cy_;
             if (dx * dx + dy * dy <= r2) {
                 PxClear(x, y);
             }
@@ -178,8 +180,8 @@ void EyeRenderer::ClearPupil(int pupil_r) {
 
 void EyeRenderer::DrawGlare(int pupil_r) {
     // Primary: 2×2 block at upper-right of pupil
-    int hx = EYE_CX + pupil_r / 3;
-    int hy = EYE_CY - pupil_r / 3;
+    int hx = pupil_cx_ + pupil_r / 3;
+    int hy = pupil_cy_ - pupil_r / 3;
     PxSet(hx, hy);
     PxSet(hx + 1, hy);
     PxSet(hx, hy - 1);
@@ -410,6 +412,11 @@ void EyeRenderer::Render(const Params& p) {
             ripple_offsets_[y] = (int)(ripple_amp * wave * 0.67f);
         }
     }
+
+    // ── Pupil wander (slow Lissajous drift) ──
+    float t = (float)frame_count_;
+    pupil_cx_ = EYE_CX + (int)(6.0f * std::sin(t * 0.03f));
+    pupil_cy_ = EYE_CY + (int)(4.0f * std::sin(t * 0.019f));
 
     // ── Advance envelopes ──
     float decay_time = 0.1f + p.cc_decay * p.cc_decay * p.cc_decay * 4.9f;

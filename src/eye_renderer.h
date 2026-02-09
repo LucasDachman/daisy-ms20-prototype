@@ -39,6 +39,7 @@ private:
     bool  gate_;
     float ripple_phase_;
     int   ripple_offsets_[H];  // per-row horizontal offset, precomputed each frame
+    int   pupil_cx_, pupil_cy_;  // current pupil center (wanders slowly)
     uint32_t frame_count_;
 
     // --- Pixel operations (apply ripple offset, bounds-checked) ---
