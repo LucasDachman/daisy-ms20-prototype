@@ -42,9 +42,9 @@ public:
         input_gain_ = 1.0f;
     }
 
-    // Cutoff frequency in Hz. Range: 20 – sr/2.
+    // Cutoff frequency in Hz. Range: 5 – sr/2.
     void SetCutoff(float freq) {
-        freq = std::clamp(freq, 20.0f, sr_ * 0.5f);
+        freq = std::clamp(freq, 5.0f, sr_ * 0.5f);
         g_ = std::tan(static_cast<float>(M_PI) * freq / sr_);
     }
 
