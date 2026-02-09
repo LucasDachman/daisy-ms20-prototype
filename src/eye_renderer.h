@@ -61,6 +61,11 @@ private:
     // --- Drawing primitives ---
     void DrawLine(int x0, int y0, int x1, int y1);
 
+    // --- 3×5 digit font (direct to buffer, no ripple) ---
+    void DrawGlyph(int x, int y, int digit);
+    void DrawNumber(int x, int y, int value);
+    void DrawCCValues(const Params& p);
+
     // --- Deterministic hash for textures ---
     static uint32_t Hash(int x, int y, uint32_t seed);
 };

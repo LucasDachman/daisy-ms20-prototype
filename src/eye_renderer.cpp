@@ -314,6 +314,77 @@ void EyeRenderer::DrawRays(float intensity) {
     }
 }
 
+// ── 3×5 bitmap font for digits 0-9 ────────────────────────────────────────
+// Each digit is 3 columns × 5 rows, stored as column bytes (bit 0 = top row).
+
+static constexpr uint8_t FONT_3X5[10][3] = {
+    {0x1F, 0x11, 0x1F},  // 0
+    {0x12, 0x1F, 0x10},  // 1
+    {0x1D, 0x15, 0x17},  // 2
+    {0x15, 0x15, 0x1F},  // 3
+    {0x07, 0x04, 0x1F},  // 4
+    {0x17, 0x15, 0x1D},  // 5
+    {0x1F, 0x15, 0x1D},  // 6
+    {0x01, 0x01, 0x1F},  // 7
+    {0x1F, 0x15, 0x1F},  // 8
+    {0x17, 0x15, 0x1F},  // 9
+};
+
+void EyeRenderer::DrawGlyph(int gx, int gy, int digit) {
+    if (digit < 0 || digit > 9) return;
+    int page = gy / 8;
+    int bit_off = gy & 7;
+
+    for (int c = 0; c < 3; c++) {
+        int x = gx + c;
+        if (x < 0 || x >= W) continue;
+
+        uint16_t col_bits = (uint16_t)FONT_3X5[digit][c] << bit_off;
+
+        // First page: clear 5-bit region then set glyph bits
+        if (page >= 0 && page < 8) {
+            uint8_t mask = (uint8_t)((uint16_t)0x1F << bit_off);
+            buffer_[x + page * W] &= ~mask;
+            buffer_[x + page * W] |= (uint8_t)(col_bits & 0xFF);
+        }
+        // Second page if glyph crosses boundary
+        if (bit_off > 3 && page + 1 < 8) {
+            uint8_t mask = (uint8_t)(0x1F >> (8 - bit_off));
+            buffer_[x + (page + 1) * W] &= ~mask;
+            buffer_[x + (page + 1) * W] |= (uint8_t)(col_bits >> 8);
+        }
+    }
+}
+
+void EyeRenderer::DrawNumber(int x, int y, int value) {
+    if (value < 0) value = 0;
+    if (value > 127) value = 127;
+
+    if (value >= 100) {
+        DrawGlyph(x,     y, value / 100);
+        DrawGlyph(x + 4, y, (value / 10) % 10);
+        DrawGlyph(x + 8, y, value % 10);
+    } else if (value >= 10) {
+        DrawGlyph(x,     y, value / 10);
+        DrawGlyph(x + 4, y, value % 10);
+    } else {
+        DrawGlyph(x, y, value);
+    }
+}
+
+void EyeRenderer::DrawCCValues(const Params& p) {
+    // Top row: CCs 1-4 (cutoff, drive, sub, fold)
+    // Bottom row: CCs 5-8 (decay, amp_env, filt_env, fx)
+    const float top[4] = {p.cc_cutoff, p.cc_drive, p.cc_sub, p.cc_fold};
+    const float bot[4] = {p.cc_decay, p.cc_amp_env, p.cc_filt_env, p.cc_fx};
+
+    for (int i = 0; i < 4; i++) {
+        int x = 2 + i * 32;
+        DrawNumber(x,  0, (int)(top[i] * 127.0f));
+        DrawNumber(x, 59, (int)(bot[i] * 127.0f));
+    }
+}
+
 // ── Main render pipeline ───────────────────────────────────────────────────
 
 void EyeRenderer::Render(const Params& p) {
@@ -375,4 +446,5 @@ void EyeRenderer::Render(const Params& p) {
     ClipToLids(open_top, open_bot);
     DrawLashes(open_top, p.cc_drive);
     DrawRays(ray_intensity);
+    DrawCCValues(p);
 }
