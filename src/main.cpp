@@ -6,11 +6,13 @@
 // =============================================================================
 
 #include <cmath>
+#include <cstring>
 #include "daisy_seed.h"
 #include "daisysp.h"
 #include "voice.h"
 #include "fx_chain.h"
 #include "params.h"
+#include "eye_renderer.h"
 
 using namespace daisy;
 
@@ -27,6 +29,56 @@ static Params params;
 // Place it in SDRAM so it doesn't overflow internal SRAM.
 static FxChain DSY_SDRAM_BSS fx;
 
+// Eye display
+static EyeRenderer eye;
+static I2CHandle   oled_i2c;
+static constexpr uint8_t OLED_ADDR = 0x3C;
+
+// ---------------------------------------------------------------------------
+// Minimal SSD1309 driver — batched page writes for fast, non-starving I2C
+// ---------------------------------------------------------------------------
+// libDaisy's SSD130x driver sends 1 byte per I2C transaction (74ms per
+// frame at 400 kHz). This driver sends 128 bytes per transaction (~3ms per
+// page), and the main loop polls MIDI between pages.
+// ---------------------------------------------------------------------------
+
+static void OledCmd(uint8_t cmd) {
+    uint8_t buf[2] = {0x00, cmd};
+    oled_i2c.TransmitBlocking(OLED_ADDR, buf, 2, 10);
+}
+
+static void OledInit() {
+    // Standard SSD1306/SSD1309 128×64 init sequence
+    OledCmd(0xAE);        // display off
+    OledCmd(0xD5); OledCmd(0x80);  // clock divide
+    OledCmd(0xA8); OledCmd(0x3F);  // multiplex 64
+    OledCmd(0xD3); OledCmd(0x00);  // display offset 0
+    OledCmd(0x40);        // start line 0
+    OledCmd(0x8D); OledCmd(0x14);  // charge pump on
+    OledCmd(0xA1);        // segment remap
+    OledCmd(0xC8);        // COM scan descending
+    OledCmd(0xDA); OledCmd(0x12);  // COM pins
+    OledCmd(0x81); OledCmd(0x8F);  // contrast
+    OledCmd(0xD9); OledCmd(0x25);  // pre-charge
+    OledCmd(0xDB); OledCmd(0x34);  // VCOMH deselect
+    OledCmd(0xA4);        // resume from RAM
+    OledCmd(0xA6);        // normal display (not inverted)
+    OledCmd(0xAF);        // display on
+}
+
+// Send one page (128 bytes) in a single I2C transaction.
+// Returns in ~3ms at 400 kHz — short enough to not starve MIDI.
+static uint8_t page_buf[129];  // 0x40 prefix + 128 data bytes
+
+static void OledSendPage(uint8_t page, const uint8_t* data) {
+    OledCmd(0xB0 + page);  // set page
+    OledCmd(0x00);         // low column = 0
+    OledCmd(0x10);         // high column = 0
+    page_buf[0] = 0x40;   // I2C data mode prefix
+    std::memcpy(&page_buf[1], data, 128);
+    oled_i2c.TransmitBlocking(OLED_ADDR, page_buf, 129, 50);
+}
+
 // ---------------------------------------------------------------------------
 // Audio callback — runs at 48 kHz, block size 48
 // ---------------------------------------------------------------------------
@@ -34,65 +86,94 @@ static void AudioCallback(AudioHandle::InputBuffer in,
                           AudioHandle::OutputBuffer out,
                           size_t size) {
     for (size_t i = 0; i < size; i++) {
-        // Voice: osc → wavefolder → filter → amp envelope
         float sig = voice.Process(params);
-
-        // FX: chorus → reverb crossfade
         sig = fx.Process(sig, params.fx_mix);
-
-        // Output gain (no soft clip — let resonance peaks clip naturally)
         sig *= OUTPUT_GAIN;
-
-        // Mono out (same signal on both channels)
         out[0][i] = sig;
         out[1][i] = sig;
     }
 }
 
 // ---------------------------------------------------------------------------
-// MIDI message handling
+// MIDI polling helper — call frequently to avoid buffer overflow
 // ---------------------------------------------------------------------------
-static void HandleMidiMessage(MidiEvent event) {
-    // Filter to channel 1 only (0-indexed)
-    if (event.channel != MIDI_CHANNEL) return;
-
-    // Blink LED on any MIDI message
-    hw.SetLed(true);
-
-    switch (event.type) {
-        case NoteOn: {
-            auto note = event.AsNoteOn();
-            if (note.velocity > 0) {
-                voice.NoteOn(note.note);
-                hw.SetLed(true);
-            } else {
-                voice.NoteOff(note.note);
-                hw.SetLed(false);
+static void PollMidi() {
+    midi_uart.Listen();
+    while (midi_uart.HasEvents()) {
+        MidiEvent event = midi_uart.PopEvent();
+        if (event.channel != MIDI_CHANNEL) continue;
+        hw.SetLed(true);
+        switch (event.type) {
+            case NoteOn: {
+                auto note = event.AsNoteOn();
+                if (note.velocity > 0) {
+                    voice.NoteOn(note.note);
+                    eye.NoteOn();
+                } else {
+                    voice.NoteOff(note.note);
+                    eye.NoteOff();
+                    hw.SetLed(false);
+                }
+                break;
             }
-            break;
+            case NoteOff: {
+                auto note = event.AsNoteOn();
+                voice.NoteOff(note.note);
+                eye.NoteOff();
+                hw.SetLed(false);
+                break;
+            }
+            case ControlChange: {
+                auto cc = event.AsControlChange();
+                params.HandleCC(cc.control_number, cc.value);
+                break;
+            }
+            case PitchBend: {
+                auto bend = event.AsPitchBend();
+                params.HandlePitchBend(bend.value);
+                break;
+            }
+            default: break;
         }
+    }
 
-        case NoteOff: {
-            auto note = event.AsNoteOn();
-            voice.NoteOff(note.note);
-            hw.SetLed(false);
-            break;
+    midi_usb.Listen();
+    while (midi_usb.HasEvents()) {
+        MidiEvent event = midi_usb.PopEvent();
+        if (event.channel != MIDI_CHANNEL) continue;
+        hw.SetLed(true);
+        switch (event.type) {
+            case NoteOn: {
+                auto note = event.AsNoteOn();
+                if (note.velocity > 0) {
+                    voice.NoteOn(note.note);
+                    eye.NoteOn();
+                } else {
+                    voice.NoteOff(note.note);
+                    eye.NoteOff();
+                    hw.SetLed(false);
+                }
+                break;
+            }
+            case NoteOff: {
+                auto note = event.AsNoteOn();
+                voice.NoteOff(note.note);
+                eye.NoteOff();
+                hw.SetLed(false);
+                break;
+            }
+            case ControlChange: {
+                auto cc = event.AsControlChange();
+                params.HandleCC(cc.control_number, cc.value);
+                break;
+            }
+            case PitchBend: {
+                auto bend = event.AsPitchBend();
+                params.HandlePitchBend(bend.value);
+                break;
+            }
+            default: break;
         }
-
-        case ControlChange: {
-            auto cc = event.AsControlChange();
-            params.HandleCC(cc.control_number, cc.value);
-            break;
-        }
-
-        case PitchBend: {
-            auto bend = event.AsPitchBend();
-            params.HandlePitchBend(bend.value);
-            break;
-        }
-
-        default:
-            break;
     }
 }
 
@@ -100,14 +181,12 @@ static void HandleMidiMessage(MidiEvent event) {
 // Main
 // ---------------------------------------------------------------------------
 int main(void) {
-    // Hardware init
     hw.Init();
     hw.SetAudioBlockSize(48);
     hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
 
     float sample_rate = hw.AudioSampleRate();
 
-    // Init synth modules
     voice.Init(sample_rate);
     fx.Init(sample_rate);
     params.Update();
@@ -120,24 +199,44 @@ int main(void) {
     midi_uart.Init(uart_cfg);
     midi_uart.StartReceive();
 
-    // MIDI: USB (class-compliant, no driver needed)
+    // MIDI: USB
     MidiUsbHandler::Config usb_cfg;
     midi_usb.Init(usb_cfg);
     midi_usb.StartReceive();
 
-    // Start audio
+    eye.Init();
+
+    // Start audio before display — audio runs at interrupt priority
     hw.StartAudio(AudioCallback);
 
-    // Main loop: poll both MIDI inputs
-    while (1) {
-        midi_uart.Listen();
-        while (midi_uart.HasEvents()) {
-            HandleMidiMessage(midi_uart.PopEvent());
-        }
+    // OLED display: I2C1 at 400 kHz (D11=SCL, D12=SDA)
+    I2CHandle::Config i2c_cfg;
+    i2c_cfg.periph         = I2CHandle::Config::Peripheral::I2C_1;
+    i2c_cfg.speed          = I2CHandle::Config::Speed::I2C_400KHZ;
+    i2c_cfg.mode           = I2CHandle::Config::Mode::I2C_MASTER;
+    i2c_cfg.pin_config.scl = {DSY_GPIOB, 8};
+    i2c_cfg.pin_config.sda = {DSY_GPIOB, 9};
+    oled_i2c.Init(i2c_cfg);
+    OledInit();
 
-        midi_usb.Listen();
-        while (midi_usb.HasEvents()) {
-            HandleMidiMessage(midi_usb.PopEvent());
+    // Main loop
+    uint32_t last_frame = 0;
+
+    while (1) {
+        PollMidi();
+
+        uint32_t now = System::GetNow();
+        if (now - last_frame >= 50) {  // ~20 fps target
+            last_frame = now;
+
+            eye.Render(params);
+            const uint8_t* buf = eye.Buffer();
+
+            // Send 8 pages, polling MIDI between each (~3ms per page)
+            for (uint8_t page = 0; page < 8; page++) {
+                OledSendPage(page, &buf[page * 128]);
+                PollMidi();
+            }
         }
     }
 }

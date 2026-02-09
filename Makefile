@@ -13,7 +13,8 @@ DAISYEXAMPLES_DIR = ../DaisyExamples
 CPP_SOURCES = \
 	src/main.cpp \
 	src/voice.cpp \
-	src/fx_chain.cpp
+	src/fx_chain.cpp \
+	src/eye_renderer.cpp
 
 # Additional include paths
 C_INCLUDES += -Isrc
