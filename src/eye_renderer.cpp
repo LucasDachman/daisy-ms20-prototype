@@ -107,34 +107,34 @@ void EyeRenderer::FillSclera(float open_top, float open_bot) {
 
 // ── Blood vessels (dark lines from iris outward toward lids) ──────────────
 
-void EyeRenderer::DrawVessels(int count, float open_top, float open_bot) {
-    if (count <= 0) return;
+void EyeRenderer::DrawVessels(float fold, float open_top, float open_bot) {
+    if (fold < 0.01f) return;
+
+    int count = 6 + (int)(fold * 4.0f);           // 6-10 vessels
+    int thickness = 1 + (int)(fold * 2.0f);        // 1-3px wide
+    float start_r = (float)IRIS_R + 2.0f;          // start just outside iris
+    float max_r = EYE_HALF_W;                       // full length; ClipToLids trims
 
     for (int v = 0; v < count; v++) {
         float angle = (float)v * 6.2832f / (float)count;
         float ca = std::cos(angle);
         float sa = std::sin(angle);
 
-        float r = 10.0f;
-        for (int step = 0; step < 20; step++) {
+        for (float r = start_r; r < max_r; r += 1.0f) {
             float px = (float)EYE_CX + r * ca;
             float py = (float)EYE_CY + r * sa;
 
-            // Squiggle: hash-based perpendicular offset ±2-3px
-            int h = (int)(Hash(v, step, 0xB100D) & 7);
-            float offset = ((float)h - 3.5f) * 0.8f;
+            // Mild squiggle for organic feel
+            int h = (int)(Hash(v, (int)r, 0xB100D) & 7);
+            float offset = ((float)h - 3.5f) * 0.5f;
             px += -sa * offset;
             py += ca * offset;
 
-            int ix = (int)px;
-            int iy = (int)py;
-
-            // 3x3 block for bold rendering
-            for (int dy = -1; dy <= 1; dy++)
-                for (int dx = -1; dx <= 1; dx++)
-                    PxClear(ix + dx, iy + dy);
-
-            r += 1.0f;
+            // Draw with thickness perpendicular to vessel direction
+            for (int tw = 0; tw < thickness; tw++) {
+                float perp = (float)tw - (float)(thickness - 1) * 0.5f;
+                PxClear((int)(px - sa * perp), (int)(py + ca * perp));
+            }
         }
     }
 }
@@ -437,14 +437,13 @@ void EyeRenderer::Render(const Params& p) {
     float open_bot = open_top;
 
     int pupil_r = 7 + (int)(p.cc_sub * 6.0f);
-    int vessel_count = (int)(p.cc_fold * 10.0f);
     float ray_intensity = ray_env_ * p.cc_amp_env;
 
     // ── Render ──
     std::memset(buffer_, 0, BUF_SIZE);
 
     FillSclera(open_top, open_bot);
-    DrawVessels(vessel_count, open_top, open_bot);
+    DrawVessels(p.cc_fold, open_top, open_bot);
     ClearPupil(pupil_r);
     DrawGlare(pupil_r);
     ClipToLids(open_top, open_bot);

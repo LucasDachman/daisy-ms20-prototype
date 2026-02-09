@@ -50,7 +50,7 @@ private:
 
     // --- Eye component renderers ---
     void FillSclera(float open_top, float open_bot);
-    void DrawVessels(int count, float open_top, float open_bot);
+    void DrawVessels(float fold, float open_top, float open_bot);
     void DrawIris();
     void ClearPupil(int pupil_r);
     void DrawGlare(int pupil_r);
