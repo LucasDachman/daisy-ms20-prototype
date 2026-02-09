@@ -29,6 +29,7 @@ void Voice::Init(float sample_rate) {
     midi_note_ = 69;
 
     gate_ = false;
+    env_stage_ = kRelease;
     env_value_ = 0.0f;
 
     filter_.Init(sample_rate);
@@ -41,6 +42,7 @@ void Voice::NoteOn(int midi_note) {
     midi_note_ = midi_note;
     note_freq_ = MidiToFreq(midi_note);
     gate_ = true;
+    env_stage_ = kAttack;
 
     // Reset everything so each note starts clean
     saw_phase_ = 0.0f;
@@ -96,17 +98,17 @@ float Voice::ProcessEnvelope(float attack_s, float decay_s, float sustain, float
     float time_s;
 
     if (gate_) {
-        if (env_value_ < 0.999f) {
-            // Attack phase: ramp to 1.0
+        if (env_stage_ == kAttack) {
             target = 1.0f;
             time_s = attack_s;
+            if (env_value_ >= 0.999f) env_stage_ = kDecay;
         } else {
-            // Decay phase: ramp to sustain level
+            // Decay/sustain: ramp to sustain level and hold
             target = sustain;
             time_s = decay_s;
         }
     } else {
-        // Release phase: ramp to 0.0
+        env_stage_ = kRelease;
         target = 0.0f;
         time_s = release_s;
     }

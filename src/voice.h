@@ -41,8 +41,10 @@ private:
     int   midi_note_;
 
     // Envelope
-    bool  gate_;
-    float env_value_;      // current envelope output, 0–1
+    enum EnvStage { kAttack, kDecay, kRelease };
+    bool     gate_;
+    EnvStage env_stage_;
+    float    env_value_;      // current envelope output, 0–1
 
     // Filter
     Korg35LPF filter_;
