@@ -37,10 +37,11 @@ private:
     float ray_env_;       // 0→1 on note-on (grows), decays on note-off
     float lid_env_;       // 1.0 on note-on, decays naturally
     bool  gate_;
-    int   shake_x_, shake_y_;
+    float ripple_phase_;
+    int   ripple_offsets_[H];  // per-row horizontal offset, precomputed each frame
     uint32_t frame_count_;
 
-    // --- Pixel operations (apply shake offset, bounds-checked) ---
+    // --- Pixel operations (apply ripple offset, bounds-checked) ---
     void PxSet(int x, int y);
     void PxClear(int x, int y);
 

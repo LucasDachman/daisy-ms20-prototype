@@ -23,8 +23,8 @@ void EyeRenderer::Init() {
     ray_env_ = 0.0f;
     lid_env_ = 0.0f;
     gate_ = false;
-    shake_x_ = 0;
-    shake_y_ = 0;
+    ripple_phase_ = 0.0f;
+    std::memset(ripple_offsets_, 0, sizeof(ripple_offsets_));
     frame_count_ = 0;
 }
 
@@ -40,15 +40,13 @@ void EyeRenderer::NoteOff() {
 // ── Pixel operations (with shake offset + bounds check) ───────────────────
 
 void EyeRenderer::PxSet(int x, int y) {
-    x += shake_x_;
-    y += shake_y_;
+    if (y >= 0 && y < H) x += ripple_offsets_[y];
     if (x < 0 || x >= W || y < 0 || y >= H) return;
     buffer_[x + (y / 8) * W] |= (1 << (y & 7));
 }
 
 void EyeRenderer::PxClear(int x, int y) {
-    x += shake_x_;
-    y += shake_y_;
+    if (y >= 0 && y < H) x += ripple_offsets_[y];
     if (x < 0 || x >= W || y < 0 || y >= H) return;
     buffer_[x + (y / 8) * W] &= ~(1 << (y & 7));
 }
@@ -321,16 +319,21 @@ void EyeRenderer::DrawRays(float intensity) {
 void EyeRenderer::Render(const Params& p) {
     frame_count_++;
 
-    // ── Screen shake ──
-    if (p.cc_fx > 0.01f) {
-        int mag = (int)(p.cc_fx * 4.0f);
-        uint32_t hx = Hash((int)frame_count_, 0, 0x5EA4);
-        uint32_t hy = Hash((int)frame_count_, 1, 0x5EA5);
-        shake_x_ = (int)(hx % (2 * mag + 1)) - mag;
-        shake_y_ = (int)(hy % (2 * mag + 1)) - mag;
+    // ── Ripple wave distortion ──
+    ripple_phase_ += 0.12f;
+    if (ripple_phase_ > 6.2832f) ripple_phase_ -= 6.2832f;
+
+    float ripple_amp = p.cc_fx * 5.0f;
+    if (ripple_amp < 0.01f) {
+        std::memset(ripple_offsets_, 0, sizeof(ripple_offsets_));
     } else {
-        shake_x_ = 0;
-        shake_y_ = 0;
+        for (int y = 0; y < H; y++) {
+            // Two sine waves at different frequencies and opposite directions
+            // for an organic, water-like shimmer
+            float wave = std::sin((float)y * 0.18f + ripple_phase_)
+                       + 0.5f * std::sin((float)y * 0.31f - ripple_phase_ * 0.7f);
+            ripple_offsets_[y] = (int)(ripple_amp * wave * 0.67f);
+        }
     }
 
     // ── Advance envelopes ──
