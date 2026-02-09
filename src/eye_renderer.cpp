@@ -223,7 +223,7 @@ void EyeRenderer::ClipToLids(float open_top, float open_bot) {
 // ── Eyelashes (white zigzag lines above top lid) ──────────────────────────
 
 void EyeRenderer::DrawLashes(float open_top, float drive) {
-    int count = 5 + (int)(drive * 8.0f);
+    int count = 5 + (int)(drive * 3.0f);
     float max_len = 3.0f + drive * 6.0f;
     float span = 20.0f;
 
@@ -251,19 +251,23 @@ void EyeRenderer::DrawLashes(float open_top, float drive) {
         float sa = std::sin(angle);
         int steps = (int)len;
 
+        int thickness = 1 + (int)(drive * 2.0f);  // 1-3px wide
+
         for (int s = 0; s <= steps; s++) {
             float px = attach_x + ca * (float)s;
             float py = attach_y + sa * (float)s;
 
-            // Hash-based zigzag perpendicular offset, scaled by drive
-            if (drive > 0.01f) {
-                int h = (int)(Hash(i, s, 0x1A5E) & 7);
-                float offset = ((float)h - 3.5f) * drive * 0.86f;
-                px += -sa * offset;
-                py += ca * offset;
-            }
+            // Hash-based zigzag perpendicular offset, constant moderate squiggle
+            int h = (int)(Hash(i, s, 0x1A5E) & 7);
+            float offset = ((float)h - 3.5f) * 0.35f;
+            px += -sa * offset;
+            py += ca * offset;
 
-            PxSet((int)px, (int)py);
+            // Draw with thickness perpendicular to lash direction
+            for (int tw = 0; tw < thickness; tw++) {
+                float perp = (float)tw - (float)(thickness - 1) * 0.5f;
+                PxSet((int)(px - sa * perp), (int)(py + ca * perp));
+            }
         }
     }
 }
