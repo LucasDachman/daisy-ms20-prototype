@@ -25,9 +25,7 @@ static MidiUsbHandler  midi_usb;
 static Voice voice;
 static Params params;
 
-// FxChain contains ReverbSc which has large internal buffers.
-// Place it in SDRAM so it doesn't overflow internal SRAM.
-static FxChain DSY_SDRAM_BSS fx;
+static FxChain fx;
 
 // Eye display
 static EyeRenderer eye;
@@ -87,7 +85,7 @@ static void AudioCallback(AudioHandle::InputBuffer in,
                           size_t size) {
     for (size_t i = 0; i < size; i++) {
         float sig = voice.Process(params);
-        sig = fx.Process(sig, params.fx_mix);
+        sig = fx.Process(sig, params.overdrive);
         sig *= OUTPUT_GAIN;
         out[0][i] = sig;
         out[1][i] = sig;

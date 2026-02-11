@@ -23,11 +23,6 @@ constexpr float ENV_ATTACK_S       = 0.002f;  // 2 ms, always
 constexpr float ENV_SUSTAIN        = 0.0f;    // pure AD envelope
 constexpr float KEY_TRACKING       = 0.5f;    // 50% key tracking
 
-constexpr float CHORUS_RATE_HZ    = 0.8f;
-constexpr float CHORUS_DEPTH       = 0.4f;
-constexpr float CHORUS_FEEDBACK    = 0.2f;
-constexpr float REVERB_FEEDBACK    = 0.70f;   // "size"
-constexpr float REVERB_LP_FREQ     = 4000.0f; // dark tail
 
 constexpr float PITCH_BEND_RANGE   = 2.0f;    // semitones
 constexpr float OUTPUT_GAIN        = 1.2f;    // moderate gain, peaks clip at DAC naturally
@@ -59,9 +54,10 @@ inline float ScaleDecay(float cc_norm) {
 }
 
 // CC 7 → Filter envelope depth (0 = no effect, 1 = full envelope sweep)
-// x^3 curve: more resolution at low depths, still reaches 1.0 at max
+// x^4 curve: fine resolution at low depths for subtle filter movement
 inline float ScaleFilterEnvDepth(float cc_norm) {
-    return cc_norm * cc_norm * cc_norm;
+    float x2 = cc_norm * cc_norm;
+    return x2 * x2;
 }
 
 // -------------------------------------------------------------------------
@@ -91,7 +87,7 @@ struct Params {
     float decay_time     = 0.0f;
     float amp_env_depth  = 0.0f;
     float filt_env_depth = 0.0f;
-    float fx_mix         = 0.0f;
+    float overdrive      = 0.0f;
 
     // Recalculate derived values from raw CCs
     void Update() {
@@ -103,7 +99,7 @@ struct Params {
         decay_time     = ScaleDecay(cc_decay);
         amp_env_depth  = cc_amp_env;
         filt_env_depth = ScaleFilterEnvDepth(cc_filt_env);
-        fx_mix         = cc_fx;
+        overdrive      = cc_fx;
     }
 
     // Handle a MIDI CC message. Returns true if it was one of ours.
