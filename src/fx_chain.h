@@ -1,6 +1,6 @@
 #pragma once
 // =============================================================================
-// fx_chain.h — Post-filter overdrive
+// fx_chain.h — Amp-like overdrive with pre/post filtering
 // =============================================================================
 
 #include "daisysp.h"
@@ -13,5 +13,10 @@ public:
     float Process(float in, float drive);
 
 private:
-    daisysp::Overdrive od_;
+    static float AsymClip(float x);
+    static float FlushDenormal(float x);
+
+    daisysp::OnePole hp_pre_;   // 80 Hz coupling cap
+    daisysp::OnePole lp_post_;  // 5 kHz cabinet sim
+    float dc_state_;            // DC blocker accumulator
 };
