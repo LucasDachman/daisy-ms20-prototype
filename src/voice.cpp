@@ -44,11 +44,8 @@ void Voice::NoteOn(int midi_note) {
     gate_ = true;
     env_stage_ = kAttack;
 
-    // Reset everything so each note starts clean
-    saw_phase_ = 0.0f;
-    sub_phase_ = 0.0f;
-    env_value_ = 0.0f;
-    filter_.Reset();
+    // Free-running oscillators + envelope retrigger from current level
+    // — no phase/state resets, so retriggering is click-free
 }
 
 void Voice::NoteOff(int midi_note) {
