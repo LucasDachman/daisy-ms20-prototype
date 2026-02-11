@@ -63,7 +63,8 @@ private:
     // --- Drawing primitives ---
     void DrawLine(int x0, int y0, int x1, int y1);
 
-    // --- 3×5 digit font (direct to buffer, no ripple) ---
+    // --- 3×5 font (direct to buffer, no ripple) ---
+    void DrawChar(int x, int y, char ch);
     void DrawGlyph(int x, int y, int digit);
     void DrawNumber(int x, int y, int value);
     void DrawCCValues(const Params& p);

@@ -408,10 +408,10 @@ void EyeRenderer::DrawLightning(float intensity) {
     }
 }
 
-// ── 3×5 bitmap font for digits 0-9 ────────────────────────────────────────
-// Each digit is 3 columns × 5 rows, stored as column bytes (bit 0 = top row).
+// ── 3×5 bitmap font ───────────────────────────────────────────────────────
+// Each glyph is 3 columns × 5 rows, stored as column bytes (bit 0 = top row).
 
-static constexpr uint8_t FONT_3X5[10][3] = {
+static constexpr uint8_t FONT_DIGITS[10][3] = {
     {0x1F, 0x11, 0x1F},  // 0
     {0x12, 0x1F, 0x10},  // 1
     {0x1D, 0x15, 0x17},  // 2
@@ -424,8 +424,46 @@ static constexpr uint8_t FONT_3X5[10][3] = {
     {0x17, 0x15, 0x1F},  // 9
 };
 
-void EyeRenderer::DrawGlyph(int gx, int gy, int digit) {
-    if (digit < 0 || digit > 9) return;
+static constexpr uint8_t FONT_ALPHA[26][3] = {
+    {0x1E, 0x05, 0x1E},  // A
+    {0x1F, 0x15, 0x0A},  // B
+    {0x0E, 0x11, 0x11},  // C
+    {0x1F, 0x11, 0x0E},  // D
+    {0x1F, 0x15, 0x11},  // E
+    {0x1F, 0x05, 0x01},  // F
+    {0x00, 0x00, 0x00},  // G
+    {0x00, 0x00, 0x00},  // H
+    {0x00, 0x00, 0x00},  // I
+    {0x00, 0x00, 0x00},  // J
+    {0x00, 0x00, 0x00},  // K
+    {0x1F, 0x10, 0x10},  // L
+    {0x00, 0x00, 0x00},  // M
+    {0x00, 0x00, 0x00},  // N
+    {0x00, 0x00, 0x00},  // O
+    {0x00, 0x00, 0x00},  // P
+    {0x00, 0x00, 0x00},  // Q
+    {0x1F, 0x05, 0x1A},  // R
+    {0x12, 0x15, 0x09},  // S
+    {0x01, 0x1F, 0x01},  // T
+    {0x00, 0x00, 0x00},  // U
+    {0x00, 0x00, 0x00},  // V
+    {0x00, 0x00, 0x00},  // W
+    {0x1B, 0x04, 0x1B},  // X
+    {0x00, 0x00, 0x00},  // Y
+    {0x00, 0x00, 0x00},  // Z
+};
+
+void EyeRenderer::DrawChar(int gx, int gy, char ch) {
+    const uint8_t* glyph = nullptr;
+    if (ch >= '0' && ch <= '9') {
+        glyph = FONT_DIGITS[ch - '0'];
+    } else if (ch >= 'A' && ch <= 'Z') {
+        glyph = FONT_ALPHA[ch - 'A'];
+        if (glyph[0] == 0 && glyph[1] == 0 && glyph[2] == 0) return;
+    } else {
+        return;
+    }
+
     int page = gy / 8;
     int bit_off = gy & 7;
 
@@ -433,21 +471,24 @@ void EyeRenderer::DrawGlyph(int gx, int gy, int digit) {
         int x = gx + c;
         if (x < 0 || x >= W) continue;
 
-        uint16_t col_bits = (uint16_t)FONT_3X5[digit][c] << bit_off;
+        uint16_t col_bits = (uint16_t)glyph[c] << bit_off;
 
-        // First page: clear 5-bit region then set glyph bits
         if (page >= 0 && page < 8) {
             uint8_t mask = (uint8_t)((uint16_t)0x1F << bit_off);
             buffer_[x + page * W] &= ~mask;
             buffer_[x + page * W] |= (uint8_t)(col_bits & 0xFF);
         }
-        // Second page if glyph crosses boundary
         if (bit_off > 3 && page + 1 < 8) {
             uint8_t mask = (uint8_t)(0x1F >> (8 - bit_off));
             buffer_[x + (page + 1) * W] &= ~mask;
             buffer_[x + (page + 1) * W] |= (uint8_t)(col_bits >> 8);
         }
     }
+}
+
+void EyeRenderer::DrawGlyph(int x, int y, int digit) {
+    if (digit < 0 || digit > 9) return;
+    DrawChar(x, y, '0' + digit);
 }
 
 void EyeRenderer::DrawNumber(int x, int y, int value) {
@@ -469,13 +510,20 @@ void EyeRenderer::DrawNumber(int x, int y, int value) {
 void EyeRenderer::DrawCCValues(const Params& p) {
     // Top row: CCs 1-4 (cutoff, drive, sub, fold)
     // Bottom row: CCs 5-8 (decay, amp_env, filt_env, fx)
-    const float top[4] = {p.cc_cutoff, p.cc_drive, p.cc_sub, p.cc_fold};
-    const float bot[4] = {p.cc_decay, p.cc_amp_env, p.cc_filt_env, p.cc_fx};
+    const float top_val[4] = {p.cc_cutoff, p.cc_drive, p.cc_sub, p.cc_fold};
+    const float bot_val[4] = {p.cc_decay, p.cc_amp_env, p.cc_filt_env, p.cc_fx};
+    static constexpr char top_lbl[4][3] = {"CT", "DR", "SB", "FL"};
+    static constexpr char bot_lbl[4][3] = {"DC", "AE", "FE", "FX"};
 
     for (int i = 0; i < 4; i++) {
-        int x = 2 + i * 32;
-        DrawNumber(x,  0, (int)(top[i] * 127.0f));
-        DrawNumber(x, 59, (int)(bot[i] * 127.0f));
+        int x = i * 32;
+        DrawChar(x,      0, top_lbl[i][0]);
+        DrawChar(x + 4,  0, top_lbl[i][1]);
+        DrawNumber(x + 9, 0, (int)(top_val[i] * 127.0f));
+
+        DrawChar(x,      59, bot_lbl[i][0]);
+        DrawChar(x + 4,  59, bot_lbl[i][1]);
+        DrawNumber(x + 9, 59, (int)(bot_val[i] * 127.0f));
     }
 }
 
