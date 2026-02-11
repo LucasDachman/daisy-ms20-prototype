@@ -318,48 +318,92 @@ void EyeRenderer::DrawLashes(float open_top, float drive) {
     }
 }
 
-// ── Rays (dashed white lines from almond edge outward) ────────────────────
+// ── Lightning arcs from almond tips ────────────────────────────────────────
+// Each bolt has an independent strike cycle: visible for a few frames (holding
+// its shape), then dark, then a new strike with a different shape.  Phase
+// offsets stagger the bolts so they don't all fire in unison.
 
-void EyeRenderer::DrawRays(float intensity) {
+void EyeRenderer::DrawLightning(float intensity) {
     if (intensity < 0.01f) return;
 
-    float max_len = 12.0f * intensity;
+    int bolt_count = 1 + (int)(intensity * 2.0f);   // 1-3 bolts per side
+    float max_reach = 15.0f + intensity * 45.0f;     // 15-60px from tip
 
-    for (int i = 0; i < 10; i++) {
-        float angle = (float)i * 6.2832f / 10.0f;
-        float ca = std::cos(angle);
-        float sa = std::sin(angle);
+    // Duty cycle scales with intensity
+    int base_on  = 8 + (int)(intensity * 12.0f);             // 8-20 frames visible
+    int base_off = 12 + (int)((1.0f - intensity) * 28.0f);  // 12-40 frames dark
 
-        // Find where the ray exits the almond shape
-        // Step outward from center until outside lid curves
-        float edge_r = 0.0f;
-        for (float r = 2.0f; r < 60.0f; r += 1.0f) {
-            float px = (float)EYE_CX + r * ca;
-            float py = (float)EYE_CY + r * sa;
-            float dx_norm = (px - (float)EYE_CX) / EYE_HALF_W;
-            float shape = AlmondShape(dx_norm);
-            // Use generous lid opening for ray start (always use max open)
-            float top_y = (float)EYE_CY - 24.0f * shape;
-            float bot_y = (float)EYE_CY + 24.0f * shape;
-            if (shape <= 0.0f || py < top_y || py > bot_y) {
-                edge_r = r;
-                break;
+    int left_tip  = EYE_CX - (int)EYE_HALF_W;
+    int right_tip = EYE_CX + (int)EYE_HALF_W;
+
+    for (int side = 0; side < 2; side++) {
+        int tip_x = (side == 0) ? left_tip : right_tip;
+        int dir   = (side == 0) ? -1 : 1;
+
+        for (int b = 0; b < bolt_count; b++) {
+            // Per-bolt timing from a fixed hash (doesn't change with frame)
+            uint32_t th = Hash(b, side, 0xA3C5);
+            int on_frames  = base_on  + (int)((th >> 0) & 0x1);  // +0 or +1
+            int off_frames = base_off + (int)((th >> 4) & 0x3);  // +0 to +3
+            int period = on_frames + off_frames;
+            int phase  = (int)((th >> 8) & 0x3F);                // 0-63 stagger
+
+            int cycle_pos = ((int)frame_count_ + phase) % period;
+            if (cycle_pos >= on_frames) continue;  // bolt is dark this frame
+
+            // Shape seed: stable during on-window, new shape each strike
+            uint32_t shape_seed = ((uint32_t)frame_count_ + phase) / (uint32_t)period;
+
+            // Per-bolt randomized reach (50-100% of max)
+            uint32_t rh = Hash(b, side + 77, shape_seed);
+            float reach = max_reach * (0.5f + 0.5f * (float)(rh & 0xFF) / 255.0f);
+            int full_steps = (int)reach;
+            if (full_steps < 1) continue;
+
+            // Triangle envelope: grow outward first half, shrink back second half
+            float t = (on_frames > 1)
+                ? (float)cycle_pos / (float)(on_frames - 1) : 0.5f;
+            float envelope = 1.0f - 2.0f * std::fabs(t - 0.5f);  // 0→1→0
+            int steps = 1 + (int)(envelope * (float)(full_steps - 1));
+
+            // Spread bolts vertically across the eye opening
+            float spread = (bolt_count > 1)
+                ? -1.0f + 2.0f * (float)b / (float)(bolt_count - 1)
+                : 0.0f;
+
+            float x = (float)tip_x;
+            float y = (float)EYE_CY + spread * 6.0f;
+
+            for (int s = 0; s < steps; s++) {
+                uint32_t h = Hash(s, b * 17 + side * 131, shape_seed);
+
+                // Jagged zigzag: ~±2.3px vertical displacement per step
+                float jitter = ((float)(h & 0xFF) - 128.0f) / 55.0f;
+
+                x += (float)dir;
+                y += jitter;
+
+                int ix = (int)x, iy = (int)y;
+                if (iy < 1 || iy >= H - 1 || ix < 0 || ix >= W) break;
+
+                PxSet(ix, iy);
+
+                // Fork a branch (~10% chance, not on first 3 steps)
+                if (s > 2 && ((h >> 8) & 0xFF) < 25) {
+                    float bx = x, by = y;
+                    int blen = 3 + (int)((h >> 16) & 0x7);       // 3-10px
+                    float bdir_y = ((h >> 20) & 1) ? 0.8f : -0.8f;
+
+                    for (int bs = 0; bs < blen; bs++) {
+                        uint32_t bh = Hash(bs, b * 71 + side * 53 + 999, shape_seed);
+                        bx += (float)dir * 0.7f;
+                        by += bdir_y + ((float)(bh & 0xFF) - 128.0f) / 160.0f;
+                        int bix = (int)bx, biy = (int)by;
+                        if (biy < 1 || biy >= H - 1 || bix < 0 || bix >= W) break;
+                        PxSet(bix, biy);
+                    }
+                }
             }
-        }
-        if (edge_r < 1.0f) continue;
-
-        // Start ray from edge + 2px gap
-        float start_r = edge_r + 2.0f;
-        int total_steps = (int)max_len;
-
-        for (int s = 0; s < total_steps; s++) {
-            // Dashed pattern: 2px on, 2px off
-            if ((s / 2) % 2 != 0) continue;
-
-            float r = start_r + (float)s;
-            int px = (int)((float)EYE_CX + r * ca);
-            int py = (int)((float)EYE_CY + r * sa);
-            PxSet(px, py);
         }
     }
 }
@@ -501,6 +545,6 @@ void EyeRenderer::Render(const Params& p) {
     DrawCatchlight(pupil_r);
     ClipToLids(open_top, open_bot);
     DrawLashes(open_top, p.cc_drive);
-    DrawRays(ray_intensity);
+    DrawLightning(ray_intensity);
     DrawCCValues(p);
 }

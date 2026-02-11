@@ -58,7 +58,7 @@ private:
     void DrawCatchlight(int pupil_r);
     void ClipToLids(float open_top, float open_bot);
     void DrawLashes(float open_top, float drive);
-    void DrawRays(float intensity);
+    void DrawLightning(float intensity);
 
     // --- Drawing primitives ---
     void DrawLine(int x0, int y0, int x1, int y1);
