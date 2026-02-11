@@ -26,7 +26,7 @@ private:
     static constexpr int BUF_SIZE = W * H / 8;  // 1024
     static constexpr int EYE_CX = 64;
     static constexpr int EYE_CY = 32;
-    static constexpr int IRIS_R = 14;
+    static constexpr int IRIS_PAD = 6;   // iris width: pupil_r + IRIS_PAD
     static constexpr float EYE_HALF_W = 24.0f;
     static constexpr float ALMOND_POW = 0.5f;
 
@@ -52,9 +52,10 @@ private:
     // --- Eye component renderers ---
     void FillSclera(float open_top, float open_bot);
     void DrawVessels(float fold, float open_top, float open_bot);
-    void DrawIris();
+    void DrawIrisTexture(int pupil_r);
+    void DrawLimbalRing(int pupil_r);
     void ClearPupil(int pupil_r);
-    void DrawGlare(int pupil_r);
+    void DrawCatchlight(int pupil_r);
     void ClipToLids(float open_top, float open_bot);
     void DrawLashes(float open_top, float drive);
     void DrawRays(float intensity);

@@ -114,7 +114,7 @@ void EyeRenderer::DrawVessels(float fold, float open_top, float open_bot) {
 
     int count = 6 + (int)(fold * 4.0f);           // 6-10 vessels
     int thickness = 1 + (int)(fold * 2.0f);        // 1-3px wide
-    float start_r = (float)IRIS_R + 2.0f;          // start just outside iris
+    float start_r = 16.0f;                            // start just outside typical iris
     float max_r = EYE_HALF_W;                       // full length; ClipToLids trims
 
     for (int v = 0; v < count; v++) {
@@ -141,20 +141,49 @@ void EyeRenderer::DrawVessels(float fold, float open_top, float open_bot) {
     }
 }
 
-// ── Iris ring (2px black circle outline) ──────────────────────────────────
+// ── Limbal ring (dark circle at outer iris edge) ─────────────────────────
 
-void EyeRenderer::DrawIris() {
-    int r_outer = IRIS_R;
-    int r_inner = IRIS_R - 2;
-    int r2_outer = r_outer * r_outer;
-    int r2_inner = r_inner * r_inner;
+void EyeRenderer::DrawLimbalRing(int pupil_r) {
+    int iris_r = pupil_r + IRIS_PAD;
+    int r2_outer = iris_r * iris_r;
+    int r2_inner = (iris_r - 2) * (iris_r - 2);
 
-    for (int y = pupil_cy_ - r_outer; y <= pupil_cy_ + r_outer; y++) {
-        for (int x = pupil_cx_ - r_outer; x <= pupil_cx_ + r_outer; x++) {
+    for (int y = pupil_cy_ - iris_r; y <= pupil_cy_ + iris_r; y++) {
+        for (int x = pupil_cx_ - iris_r; x <= pupil_cx_ + iris_r; x++) {
             int dx = x - pupil_cx_;
             int dy = y - pupil_cy_;
             int d2 = dx * dx + dy * dy;
             if (d2 <= r2_outer && d2 >= r2_inner) {
+                PxClear(x, y);
+            }
+        }
+    }
+}
+
+// ── Dithered iris texture (stippled gray zone between pupil and limbal ring)
+
+void EyeRenderer::DrawIrisTexture(int pupil_r) {
+    int iris_r = pupil_r + IRIS_PAD;
+    int r2_outer = (iris_r - 2) * (iris_r - 2);  // inside the limbal ring
+    int r2_inner = pupil_r * pupil_r;
+    float range = (float)(iris_r - 2 - pupil_r);
+    if (range < 1.0f) return;
+
+    for (int y = pupil_cy_ - iris_r; y <= pupil_cy_ + iris_r; y++) {
+        for (int x = pupil_cx_ - iris_r; x <= pupil_cx_ + iris_r; x++) {
+            int dx = x - pupil_cx_;
+            int dy = y - pupil_cy_;
+            int d2 = dx * dx + dy * dy;
+            if (d2 > r2_outer || d2 < r2_inner) continue;
+
+            // Radial position: 0 at pupil edge, 1 at limbal ring
+            float dist = std::sqrt((float)d2);
+            float t = (dist - (float)pupil_r) / range;
+
+            // Density: 70% black near pupil, 25% black near sclera
+            float density = 0.70f - 0.45f * t;
+            uint32_t h = Hash(x, y, 0x1215) & 0xFF;
+            if ((float)h < density * 255.0f) {
                 PxClear(x, y);
             }
         }
@@ -176,18 +205,33 @@ void EyeRenderer::ClearPupil(int pupil_r) {
     }
 }
 
-// ── Glare (two white dots on pupil) ───────────────────────────────────────
+// ── Catchlight (specular highlight straddling pupil-iris boundary) ────────
 
-void EyeRenderer::DrawGlare(int pupil_r) {
-    // Primary: 2×2 block at upper-right of pupil
-    int hx = pupil_cx_ + pupil_r / 3;
-    int hy = pupil_cy_ - pupil_r / 3;
-    PxSet(hx, hy);
-    PxSet(hx + 1, hy);
-    PxSet(hx, hy - 1);
-    PxSet(hx + 1, hy - 1);
-    // Secondary: single pixel at lower-left
-    PxSet(hx - 3, hy + 3);
+void EyeRenderer::DrawCatchlight(int pupil_r) {
+    // Moves 1:1 with pupil — the catchlight is on the cornea, which rotates
+    // with the eyeball. Positioned at the pupil edge (upper-right, ~2 o'clock).
+    float angle = -0.78f;  // ~45° upper-right
+    float edge_x = (float)pupil_cx_ + (float)pupil_r * std::cos(angle);
+    float edge_y = (float)pupil_cy_ + (float)pupil_r * std::sin(angle);
+
+    // Size scales with pupil: ~25% of diameter, minimum 2px
+    int size = pupil_r / 2;
+    if (size < 2) size = 2;
+    int r2 = size * size;
+
+    // Primary: filled circle straddling the pupil-iris boundary
+    for (int dy = -size; dy <= size; dy++) {
+        for (int dx = -size; dx <= size; dx++) {
+            if (dx * dx + dy * dy <= r2) {
+                PxSet((int)edge_x + dx, (int)edge_y + dy);
+            }
+        }
+    }
+
+    // Secondary: single pixel, opposite quadrant (lower-left), inside pupil
+    int sx = pupil_cx_ - pupil_r / 3;
+    int sy = pupil_cy_ + pupil_r / 3;
+    PxSet(sx, sy);
 }
 
 // ── Clip to lids (erase outside + draw lid outlines) ──────────────────────
@@ -450,9 +494,11 @@ void EyeRenderer::Render(const Params& p) {
     std::memset(buffer_, 0, BUF_SIZE);
 
     FillSclera(open_top, open_bot);
+    DrawLimbalRing(pupil_r);
+    DrawIrisTexture(pupil_r);
     DrawVessels(p.cc_fold, open_top, open_bot);
     ClearPupil(pupil_r);
-    DrawGlare(pupil_r);
+    DrawCatchlight(pupil_r);
     ClipToLids(open_top, open_bot);
     DrawLashes(open_top, p.cc_drive);
     DrawRays(ray_intensity);
