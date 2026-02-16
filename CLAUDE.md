@@ -33,3 +33,13 @@ Monophonic synth for the Electrosmith Daisy Seed (STM32H750, ARM Cortex-M7). Aud
 - **Drive + Resonance linked on CC 2.** Drive uses `x^0.6` (front-loaded), resonance uses `x^1.8 * 0.85` (back-loaded, capped). Both derived from the same raw CC value.
 - **Filter envelope is additive Hz**, not multiplicative. `mod_cutoff += env * filt_env_depth` where depth maps 0–18 kHz.
 - **ms20_filter.h is intentionally standalone.** It has no Daisy dependencies and can be unit-tested offline or reused in other projects.
+
+## ASCII Art / Diagrams
+
+- Use plain ASCII only (`-`, `|`, `+`, `<`, `>`, `v`, `^`) — no Unicode box-drawing characters
+- Keep diagrams short (3-4 lines max). Break complex diagrams into smaller pieces.
+- Prefer horizontal single-line signal-chain style when possible (no vertical alignment needed)
+- Pad all lines within a diagram to the same length to catch column drift
+- Write the full file rather than using Edit for diagram sections
+- Always Read the file back after writing and verify all lines are equal length
+- For complex diagrams, ask the user to compose in ASCIIFlow (asciiflow.com) and paste the result

@@ -26,3 +26,10 @@ USE_DAISYSP_LGPL = 1
 CPP_STANDARD = -std=gnu++17
 SYSTEM_FILES_DIR = $(DAISYEXAMPLES_DIR)/libDaisy/core
 include $(SYSTEM_FILES_DIR)/Makefile
+
+# --- Hardware test targets ---
+gpio-test:
+	$(MAKE) TARGET=gpio-test CPP_SOURCES=test/gpio_test.cpp
+
+gpio-test-program-dfu:
+	$(MAKE) TARGET=gpio-test CPP_SOURCES=test/gpio_test.cpp program-dfu

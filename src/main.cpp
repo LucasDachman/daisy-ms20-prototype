@@ -105,7 +105,7 @@ static void PollMidi() {
             case NoteOn: {
                 auto note = event.AsNoteOn();
                 if (note.velocity > 0) {
-                    voice.NoteOn(note.note);
+                    voice.NoteOn(note.note, note.velocity);
                     eye.NoteOn();
                 } else {
                     voice.NoteOff(note.note);
@@ -144,7 +144,7 @@ static void PollMidi() {
             case NoteOn: {
                 auto note = event.AsNoteOn();
                 if (note.velocity > 0) {
-                    voice.NoteOn(note.note);
+                    voice.NoteOn(note.note, note.velocity);
                     eye.NoteOn();
                 } else {
                     voice.NoteOff(note.note);

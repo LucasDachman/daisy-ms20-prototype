@@ -10,8 +10,8 @@ class Voice {
 public:
     void Init(float sample_rate);
 
-    // Trigger a new note
-    void NoteOn(int midi_note);
+    // Trigger a new note (velocity 0–127)
+    void NoteOn(int midi_note, int velocity);
 
     // Release the current note (only if note matches)
     void NoteOff(int midi_note);
@@ -39,6 +39,7 @@ private:
     float sub_phase_;      // 0–1 phasor (sine sub, -1 oct)
     float note_freq_;      // Hz, from MIDI note
     int   midi_note_;
+    float velocity_;       // 0–1 pregain from MIDI velocity
 
     // Envelope
     enum EnvStage { kAttack, kDecay, kRelease };

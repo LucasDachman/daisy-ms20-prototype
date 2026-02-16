@@ -27,6 +27,7 @@ void Voice::Init(float sample_rate) {
     sub_phase_ = 0.0f;
     note_freq_ = 440.0f;
     midi_note_ = 69;
+    velocity_ = 1.0f;
 
     gate_ = false;
     env_stage_ = kRelease;
@@ -38,9 +39,10 @@ void Voice::Init(float sample_rate) {
 // -------------------------------------------------------------------------
 // Note handling
 // -------------------------------------------------------------------------
-void Voice::NoteOn(int midi_note) {
+void Voice::NoteOn(int midi_note, int velocity) {
     midi_note_ = midi_note;
     note_freq_ = MidiToFreq(midi_note);
+    velocity_ = static_cast<float>(velocity) / 127.0f;
     gate_ = true;
     env_stage_ = kAttack;
 
@@ -148,6 +150,9 @@ float Voice::Process(const Params& p) {
     // --- Mix ---
     float mix = saw + sub * p.sub_level;
 
+    // --- Velocity pregain (before fold+filter: affects saturation character) ---
+    mix *= velocity_;
+
     // --- Wavefolder ---
     float folded = Wavefold(mix, p.fold_amount);
 
@@ -165,6 +170,9 @@ float Voice::Process(const Params& p) {
     float semitones_from_c4 = static_cast<float>(midi_note_ - 60);
     float tracking_mult = std::pow(2.0f, KEY_TRACKING * semitones_from_c4 / 12.0f);
     float mod_cutoff = base_cutoff * tracking_mult;
+
+    // Velocity → cutoff: soft notes are slightly darker (0.75× – 1×)
+    mod_cutoff *= 0.75f + 0.25f * velocity_;
 
     // Envelope → filter (sweeps UP from cutoff knob toward 10 kHz)
     // depth=0: no effect, depth=1: envelope opens filter fully
