@@ -16,7 +16,7 @@ inline constexpr int NUM_POTS = 9;
 inline constexpr float POT_DEAD_ZONE = 0.02f;   // 2% — ~3 steps on 0-127 display
 inline constexpr float POT_SMOOTH_ALPHA = 0.3f;  // IIR: 30% new (~150ms settle at 20fps)
 inline constexpr float POT_RAW_MIN = 0.01f;      // ADC floor (allow for wiper offset)
-inline constexpr float POT_RAW_MAX = 0.95f;      // ADC ceiling (pots read ~955-972 at full CW)
+inline constexpr float POT_RAW_MAX = 0.93f;      // ADC ceiling (pots read ~955-972 at full CW)
 
 // Persistent state for median filter, smoothing, and dead-zone
 static float pot_history[NUM_POTS][3];  // last 3 raw readings for median
