@@ -13,6 +13,8 @@ struct Params;  // forward declaration (defined in params.h)
 
 class EyeRenderer {
 public:
+    static constexpr bool ENABLED = true;  // flip to false to disable OLED
+
     void Init();
     void NoteOn();
     void NoteOff();

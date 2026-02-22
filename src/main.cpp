@@ -13,6 +13,7 @@
 #include "fx_chain.h"
 #include "params.h"
 #include "eye_renderer.h"
+#include "adc_pots.h"
 
 using namespace daisy;
 
@@ -86,7 +87,7 @@ static void AudioCallback(AudioHandle::InputBuffer in,
     for (size_t i = 0; i < size; i++) {
         float sig = voice.Process(params);
         sig = fx.Process(sig, params.overdrive);
-        sig *= OUTPUT_GAIN;
+        sig *= params.output_gain;
         out[0][i] = sig;
         out[1][i] = sig;
     }
@@ -204,18 +205,23 @@ int main(void) {
 
     eye.Init();
 
-    // Start audio before display — audio runs at interrupt priority
+    // Start audio first — runs at interrupt priority
     hw.StartAudio(AudioCallback);
 
+    // ADC: 9 pots on A0–A8 (init after audio to avoid DMA conflict)
+    AdcPotsInit(hw);
+
     // OLED display: I2C1 at 400 kHz (D11=SCL, D12=SDA)
-    I2CHandle::Config i2c_cfg;
-    i2c_cfg.periph         = I2CHandle::Config::Peripheral::I2C_1;
-    i2c_cfg.speed          = I2CHandle::Config::Speed::I2C_400KHZ;
-    i2c_cfg.mode           = I2CHandle::Config::Mode::I2C_MASTER;
-    i2c_cfg.pin_config.scl = {DSY_GPIOB, 8};
-    i2c_cfg.pin_config.sda = {DSY_GPIOB, 9};
-    oled_i2c.Init(i2c_cfg);
-    OledInit();
+    if (EyeRenderer::ENABLED) {
+        I2CHandle::Config i2c_cfg;
+        i2c_cfg.periph         = I2CHandle::Config::Peripheral::I2C_1;
+        i2c_cfg.speed          = I2CHandle::Config::Speed::I2C_400KHZ;
+        i2c_cfg.mode           = I2CHandle::Config::Mode::I2C_MASTER;
+        i2c_cfg.pin_config.scl = {DSY_GPIOB, 8};
+        i2c_cfg.pin_config.sda = {DSY_GPIOB, 9};
+        oled_i2c.Init(i2c_cfg);
+        OledInit();
+    }
 
     // Main loop
     uint32_t last_frame = 0;
@@ -227,13 +233,18 @@ int main(void) {
         if (now - last_frame >= 50) {  // ~20 fps target
             last_frame = now;
 
-            eye.Render(params);
-            const uint8_t* buf = eye.Buffer();
+            AdcPotsRead(hw, params);
 
-            // Send 8 pages, polling MIDI between each (~3ms per page)
-            for (uint8_t page = 0; page < 8; page++) {
-                OledSendPage(page, &buf[page * 128]);
-                PollMidi();
+            if (EyeRenderer::ENABLED) {
+
+                eye.Render(params);
+                const uint8_t* buf = eye.Buffer();
+
+                // Send 8 pages, polling MIDI between each (~3ms per page)
+                for (uint8_t page = 0; page < 8; page++) {
+                    OledSendPage(page, &buf[page * 128]);
+                    PollMidi();
+                }
             }
         }
     }

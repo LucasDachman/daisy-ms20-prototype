@@ -25,7 +25,7 @@ constexpr float KEY_TRACKING       = 0.5f;    // 50% key tracking
 
 
 constexpr float PITCH_BEND_RANGE   = 2.0f;    // semitones
-constexpr float OUTPUT_GAIN        = 1.2f;    // moderate gain, peaks clip at DAC naturally
+constexpr float MAX_OUTPUT_GAIN     = 2.0f;    // full-CW pot ceiling
 
 // -------------------------------------------------------------------------
 // CC Scaling Functions
@@ -47,10 +47,10 @@ inline float ScaleResonance(float cc_norm) {
     return (std::exp(3.0f * cc_norm) - 1.0f) / (std::exp(3.0f) - 1.0f);
 }
 
-// CC 5 → Decay time (30 ms – 5 s, x^3 * range for short-decay resolution)
+// CC 5 → Decay time (5 ms – 5 s, exponential with x^2 skew for short-decay detail)
 inline float ScaleDecay(float cc_norm) {
-    float curved = cc_norm * cc_norm * cc_norm;
-    return 0.03f + curved * (5.0f - 0.03f);
+    float curved = cc_norm * cc_norm;
+    return 0.005f * std::pow(5.0f / 0.005f, curved);
 }
 
 // CC 7 → Filter envelope depth (0 = no effect, 1 = full envelope sweep)
@@ -74,6 +74,7 @@ struct Params {
     float cc_amp_env  = 1.0f;            // CC 6  (127/127) full envelope
     float cc_filt_env = 0.0f;            // CC 7  (0/127)   no filter env
     float cc_fx       = 0.0f;            // CC 8  (0/127)   dry
+    float cc_gain     = 0.775f;          // pot 8 — 0.775² × 2.0 ≈ 1.2 (audio taper)
 
     // Pitch bend: -1 to +1
     float pitch_bend = 0.0f;
@@ -88,6 +89,7 @@ struct Params {
     float amp_env_depth  = 0.0f;
     float filt_env_depth = 0.0f;
     float overdrive      = 0.0f;
+    float output_gain    = 0.0f;
 
     // Recalculate derived values from raw CCs
     void Update() {
@@ -100,6 +102,7 @@ struct Params {
         amp_env_depth  = cc_amp_env;
         filt_env_depth = ScaleFilterEnvDepth(cc_filt_env);
         overdrive      = cc_fx;
+        output_gain    = cc_gain * cc_gain * MAX_OUTPUT_GAIN;
     }
 
     // Handle a MIDI CC message. Returns true if it was one of ours.

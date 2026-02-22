@@ -33,3 +33,9 @@ gpio-test:
 
 gpio-test-program-dfu:
 	$(MAKE) TARGET=gpio-test CPP_SOURCES=test/gpio_test.cpp program-dfu
+
+adc-diag:
+	$(MAKE) TARGET=adc-diag CPP_SOURCES=test/adc_diag.cpp
+
+adc-diag-program-dfu:
+	$(MAKE) TARGET=adc-diag CPP_SOURCES=test/adc_diag.cpp program-dfu
