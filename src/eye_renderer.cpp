@@ -509,7 +509,7 @@ void EyeRenderer::DrawNumber(int x, int y, int value) {
 
 void EyeRenderer::DrawCCValues(const Params& p) {
     // Top row: CCs 1-4 (cutoff, drive, sub, fold)
-    // Bottom row: CCs 5-8 (decay, amp_env, filt_env, fx)
+    // Bottom row: CCs 5-8 (decay, amp_env, filt_env, fx) + gain
     const float top_val[4] = {p.cc_cutoff, p.cc_drive, p.cc_sub, p.cc_fold};
     const float bot_val[4] = {p.cc_decay, p.cc_amp_env, p.cc_filt_env, p.cc_fx};
     static constexpr char top_lbl[4][3] = {"CT", "DR", "SB", "FL"};
@@ -525,6 +525,10 @@ void EyeRenderer::DrawCCValues(const Params& p) {
         DrawChar(x + 4,  59, bot_lbl[i][1]);
         DrawNumber(x + 9, 59, (int)(bot_val[i] * 127.0f));
     }
+
+    // Output gain: bottom-right corner, above FX label
+    DrawChar(109, 53, 'G');
+    DrawNumber(116, 53, (int)(p.cc_gain * 127.0f));
 }
 
 // ── Main render pipeline ───────────────────────────────────────────────────

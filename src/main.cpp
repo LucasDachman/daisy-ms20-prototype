@@ -207,11 +207,11 @@ int main(void) {
 
     eye.Init();
 
-    // Start audio first — runs at interrupt priority
-    hw.StartAudio(AudioCallback);
-
-    // ADC: 9 pots on A0–A8 (init after audio to avoid DMA conflict)
+    // ADC: 9 pots on A0–A8
     AdcPotsInit(hw);
+
+    // Start audio — runs at interrupt priority
+    hw.StartAudio(AudioCallback);
 
     // OLED display: I2C1 at 400 kHz (D11=SCL, D12=SDA)
     if (EyeRenderer::ENABLED) {

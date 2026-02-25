@@ -45,3 +45,9 @@ midi-test:
 
 midi-test-program-dfu:
 	$(MAKE) TARGET=midi-test CPP_SOURCES=test/midi_test.cpp program-dfu
+
+sine-test:
+	$(MAKE) TARGET=sine-test CPP_SOURCES=test/sine_test.cpp
+
+sine-test-program-dfu:
+	$(MAKE) TARGET=sine-test CPP_SOURCES=test/sine_test.cpp program-dfu

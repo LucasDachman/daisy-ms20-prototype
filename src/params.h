@@ -102,7 +102,7 @@ struct Params {
         amp_env_depth  = cc_amp_env;
         filt_env_depth = ScaleFilterEnvDepth(cc_filt_env);
         overdrive      = cc_fx;
-        output_gain    = cc_gain * cc_gain * MAX_OUTPUT_GAIN;
+        output_gain    = std::max(0.05f, cc_gain * cc_gain * MAX_OUTPUT_GAIN);
     }
 
     // Handle a MIDI CC message. Returns true if it was one of ours.
