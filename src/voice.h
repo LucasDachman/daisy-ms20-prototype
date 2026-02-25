@@ -22,14 +22,17 @@ public:
     bool IsActive() const { return gate_ || env_value_ > 1e-6f; }
 
 private:
+    enum EnvStage { kAttack, kDecay, kRelease };
+
     // PolyBLEP residual for antialiased saw
     float PolyBlep(float t, float dt);
 
     // Wavefolder: symmetric, stateless
     float Wavefold(float in, float amount);
 
-    // Simple ADSR envelope (one-pole smoothed)
-    float ProcessEnvelope(float attack_s, float decay_s, float sustain, float release_s);
+    // One-pole smoothed envelope
+    float ProcessEnvelope(float attack_s, float decay_s, float sustain, float release_s,
+                          EnvStage& stage, float& value);
 
     float sr_;
     float inv_sr_;
@@ -42,10 +45,11 @@ private:
     float velocity_;       // 0–1 pregain from MIDI velocity
 
     // Envelope
-    enum EnvStage { kAttack, kDecay, kRelease };
     bool     gate_;
     EnvStage env_stage_;
-    float    env_value_;      // current envelope output, 0–1
+    float    env_value_;          // amp envelope output, 0–1
+    EnvStage filt_env_stage_;
+    float    filt_env_value_;     // filter envelope output (always sustain=0)
 
     // Filter
     Korg35LPF filter_;

@@ -32,6 +32,8 @@ void Voice::Init(float sample_rate) {
     gate_ = false;
     env_stage_ = kRelease;
     env_value_ = 0.0f;
+    filt_env_stage_ = kRelease;
+    filt_env_value_ = 0.0f;
 
     filter_.Init(sample_rate);
 }
@@ -45,6 +47,7 @@ void Voice::NoteOn(int midi_note, int velocity) {
     velocity_ = static_cast<float>(velocity) / 127.0f;
     gate_ = true;
     env_stage_ = kAttack;
+    filt_env_stage_ = kAttack;
 
     // Free-running oscillators + envelope retrigger from current level
     // — no phase/state resets, so retriggering is click-free
@@ -92,22 +95,23 @@ float Voice::Wavefold(float in, float amount) {
 // -------------------------------------------------------------------------
 // Simple AD envelope with one-pole smoothing
 // -------------------------------------------------------------------------
-float Voice::ProcessEnvelope(float attack_s, float decay_s, float sustain, float release_s) {
+float Voice::ProcessEnvelope(float attack_s, float decay_s, float sustain, float release_s,
+                             EnvStage& stage, float& value) {
     float target;
     float time_s;
 
     if (gate_) {
-        if (env_stage_ == kAttack) {
+        if (stage == kAttack) {
             target = 1.0f;
             time_s = attack_s;
-            if (env_value_ >= 0.999f) env_stage_ = kDecay;
+            if (value >= 0.999f) stage = kDecay;
         } else {
             // Decay/sustain: ramp to sustain level and hold
             target = sustain;
             time_s = decay_s;
         }
     } else {
-        env_stage_ = kRelease;
+        stage = kRelease;
         target = 0.0f;
         time_s = release_s;
     }
@@ -121,8 +125,8 @@ float Voice::ProcessEnvelope(float attack_s, float decay_s, float sustain, float
         coeff = 1.0f - std::exp(-inv_sr_ / time_s);
     }
 
-    env_value_ += coeff * (target - env_value_);
-    return env_value_;
+    value += coeff * (target - value);
+    return value;
 }
 
 // -------------------------------------------------------------------------
@@ -156,11 +160,16 @@ float Voice::Process(const Params& p) {
     // --- Wavefolder ---
     float folded = Wavefold(mix, p.fold_amount);
 
-    // --- Envelope ---
+    // --- Amp envelope ---
     // depth=0: gate (sustain=1, instant release). depth=1: full AD envelope.
     float sustain = 1.0f - p.amp_env_depth;
     float release = std::max(0.002f, p.amp_env_depth * p.decay_time);
-    float env = ProcessEnvelope(ENV_ATTACK_S, p.decay_time, sustain, release);
+    float env = ProcessEnvelope(ENV_ATTACK_S, p.decay_time, sustain, release,
+                                env_stage_, env_value_);
+
+    // --- Filter envelope (independent, always sustain=0) ---
+    float fenv = ProcessEnvelope(ENV_ATTACK_S, p.decay_time, 0.0f, p.decay_time,
+                                 filt_env_stage_, filt_env_value_);
 
     // --- MS-20 Filter ---
     // Cutoff with key tracking and envelope modulation
@@ -177,7 +186,7 @@ float Voice::Process(const Params& p) {
     // Envelope → filter (sweeps UP from cutoff knob toward 10 kHz)
     // depth=0: no effect, depth=1: envelope opens filter fully
     float headroom = std::max(0.0f, 10000.0f - mod_cutoff);
-    float filt_env = env * env;  // squared: filter closes faster than amp
+    float filt_env = fenv * fenv;  // squared: filter closes faster than amp
     mod_cutoff += filt_env * p.filt_env_depth * headroom;
 
     // Clamp to valid range
