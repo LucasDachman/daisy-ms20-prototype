@@ -57,7 +57,7 @@ public:
     // Drive: 0.0 = clean, 1.0 = heavy saturation.
     void SetDrive(float drive) {
         drive = std::clamp(drive, 0.0f, 1.0f);
-        input_gain_ = 1.0f + drive * 1.0f;
+        input_gain_ = 1.0f + drive * 4.0f;
     }
 
     // Process one sample (2x oversampled internally)
@@ -100,12 +100,15 @@ private:
         s2_ = FlushDenormal(s2_);
         s3_ = FlushDenormal(s3_);
 
-        return lp2;
+        // Compensate passband gain loss from resonance feedback.
+        // Without this, high K thins out everything except the resonant peak.
+        return lp2 * (1.0f + K_ * 0.1f);
     }
 
     float Saturate(float x) {
-        // Hard clip at ±3: buzzy, aggressive resonance (MS-20 OTA character)
-        return std::max(-3.0f, std::min(3.0f, x));
+        // Smooth saturation: tames feedback progressively for stable,
+        // musical self-oscillation (closer to real OTA behavior)
+        return std::tanh(x);
     }
 
     static float FlushDenormal(float x) {

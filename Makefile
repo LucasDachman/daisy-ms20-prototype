@@ -39,3 +39,9 @@ adc-diag:
 
 adc-diag-program-dfu:
 	$(MAKE) TARGET=adc-diag CPP_SOURCES=test/adc_diag.cpp program-dfu
+
+midi-test:
+	$(MAKE) TARGET=midi-test CPP_SOURCES=test/midi_test.cpp
+
+midi-test-program-dfu:
+	$(MAKE) TARGET=midi-test CPP_SOURCES=test/midi_test.cpp program-dfu

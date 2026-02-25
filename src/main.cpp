@@ -196,6 +196,8 @@ int main(void) {
     uart_cfg.transport_config.periph =
         UartHandler::Config::Peripheral::USART_1;
     midi_uart.Init(uart_cfg);
+    // Optocoupler inverts MIDI signal; flip RX polarity in hardware
+    USART1->CR2 |= USART_CR2_RXINV;
     midi_uart.StartReceive();
 
     // MIDI: USB

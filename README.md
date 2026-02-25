@@ -57,26 +57,27 @@ Based on Will Pirkle's analysis (AN-5) and Vadim Zavalishin's "The Art of VA Fil
 | Daisy Seed (pre-soldered headers) | 1 |
 | Breadboard (830-point) | 1 |
 | 5-pin DIN socket | 1 |
-| 6N138 optocoupler | 1 |
+| H11L1 optocoupler | 1 |
 | 1N4148 diode | 1 |
-| 220Ω, 470Ω, 10kΩ resistors | 1 each |
+| 220Ω, 470Ω resistors | 1 each |
 | 1/4" mono jack socket | 1 |
 | MIDI cable + 1/4" TS cable | 1 each |
 
 ### Wiring
 
-**MIDI input** (5-pin DIN → 6N138 optoisolator → Daisy pin D14):
+**MIDI input** (5-pin DIN → H11L1 optocoupler → Daisy pin D14):
 
 ```
-DIN Pin 4 → 220Ω → 6N138 pin 1 (Anode)
-DIN Pin 5 → 6N138 pin 2 (Cathode)
+DIN Pin 5 → 220Ω → H11L1 pin 1 (Anode)
+DIN Pin 4 → H11L1 pin 2 (Cathode)
 1N4148 across pins 1-2 (band toward pin 2)
-6N138 pin 8 (Vcc) → Daisy 3V3
-6N138 pin 5 (GND) → Daisy GND
-470Ω between 6N138 pins 5-6
-10kΩ from 6N138 pin 7 → Daisy 3V3
-6N138 pin 7 (Out) → Daisy D14
+H11L1 pin 6 (Vcc) → Daisy 3V3
+H11L1 pin 5 (GND) → Daisy GND
+470Ω from H11L1 pin 4 (Collector/Out) → Daisy 3V3
+H11L1 pin 4 (Collector/Out) → Daisy D14
 ```
+
+The H11L1 inverts the MIDI signal, so firmware enables USART1 RXINV to compensate.
 
 **Audio output** (2 wires):
 
@@ -152,7 +153,7 @@ The `ms20_filter.h` module is self-contained and portable — it has no Daisy de
 ## Signal Flow
 
 ```
-MIDI IN (5-pin DIN → 6N138 → UART RX D14)
+MIDI IN (5-pin DIN → H11L1 → UART RX D14)
     │
     ▼
 SAW OSC (PolyBLEP, concert pitch)
