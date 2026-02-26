@@ -38,8 +38,6 @@ public:
 
         SetCutoff(1000.0f);
         SetResonance(0.0f);
-        SetDrive(0.0f);
-        input_gain_ = 1.0f;
     }
 
     // Cutoff frequency in Hz. Range: 5 – sr/2.
@@ -51,20 +49,13 @@ public:
     // Resonance: 0.0 = none, 1.0 = screaming.
     void SetResonance(float res) {
         res = std::clamp(res, 0.0f, 1.0f);
-        K_ = res * 12.0f;
-    }
-
-    // Drive: 0.0 = clean, 1.0 = heavy saturation.
-    void SetDrive(float drive) {
-        drive = std::clamp(drive, 0.0f, 1.0f);
-        input_gain_ = 1.0f + drive * 4.0f;
+        K_ = res * 20.0f;
     }
 
     // Process one sample (2x oversampled internally)
     float Process(float in) {
-        float boosted = in * input_gain_;
-        ProcessSample(boosted);
-        return ProcessSample(boosted);
+        ProcessSample(in);
+        return ProcessSample(in);
     }
 
     // Clear state on note-on to prevent clicks
@@ -118,7 +109,6 @@ private:
     float sr_;
     float g_;
     float K_;
-    float input_gain_;
 
     float s1_;  // LPF1 state
     float s2_;  // LPF2 state

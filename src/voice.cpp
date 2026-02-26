@@ -194,7 +194,6 @@ float Voice::Process(const Params& p) {
 
     filter_.SetCutoff(mod_cutoff);
     filter_.SetResonance(p.resonance);
-    filter_.SetDrive(p.drive);
 
     float filtered = filter_.Process(folded);
 

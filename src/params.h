@@ -8,7 +8,7 @@
 
 // MIDI CC assignments
 constexpr int CC_CUTOFF   = 1;
-constexpr int CC_DRIVE    = 2;
+constexpr int CC_RES      = 2;
 constexpr int CC_SUB      = 3;
 constexpr int CC_FOLD     = 4;
 constexpr int CC_DECAY    = 5;
@@ -25,7 +25,7 @@ constexpr float KEY_TRACKING       = 0.5f;    // 50% key tracking
 
 
 constexpr float PITCH_BEND_RANGE   = 2.0f;    // semitones
-constexpr float MAX_OUTPUT_GAIN     = 2.0f;    // full-CW pot ceiling
+constexpr float MAX_OUTPUT_GAIN     = 12.0f;   // full-CW pot ceiling
 
 // -------------------------------------------------------------------------
 // CC Scaling Functions
@@ -36,15 +36,9 @@ inline float ScaleCutoff(float cc_norm) {
     return 5.0f * std::pow(18000.0f / 5.0f, cc_norm);
 }
 
-// CC 2 → Drive (fast ramp: x^0.6)
-inline float ScaleDrive(float cc_norm) {
-    return std::pow(cc_norm, 0.6f);
-}
-
-// CC 2 → Resonance (exponential — gentle low end, screaming top end)
+// CC 2 → Resonance (x^1.5 — builds steadily, self-oscillates at top)
 inline float ScaleResonance(float cc_norm) {
-    // exp curve: most of the range is subtle, top 25% is aggressive
-    return (std::exp(3.0f * cc_norm) - 1.0f) / (std::exp(3.0f) - 1.0f);
+    return cc_norm * std::sqrt(cc_norm);
 }
 
 // CC 5 → Decay time (5 ms – 5 s, exponential with x^2 skew for short-decay detail)
@@ -67,7 +61,7 @@ inline float ScaleFilterEnvDepth(float cc_norm) {
 struct Params {
     // Raw 0-1 normalized CC values
     float cc_cutoff   = 1.0f;            // CC 1  (127/127) fully open
-    float cc_drive    = 0.0f;            // CC 2  (0/127)   no drive
+    float cc_res      = 0.0f;            // CC 2  (0/127)   no resonance
     float cc_sub      = 40.0f / 127.0f;  // CC 3  (40/127)  light sub
     float cc_fold     = 0.0f;            // CC 4  (0/127)   no fold
     float cc_decay    = 40.0f / 127.0f;  // CC 5  (40/127)
@@ -81,7 +75,6 @@ struct Params {
 
     // Derived parameters — set by Update() before audio starts
     float cutoff_hz      = 0.0f;
-    float drive          = 0.0f;
     float resonance      = 0.0f;
     float sub_level      = 0.0f;
     float fold_amount    = 0.0f;
@@ -94,8 +87,7 @@ struct Params {
     // Recalculate derived values from raw CCs
     void Update() {
         cutoff_hz      = ScaleCutoff(cc_cutoff);
-        drive          = ScaleDrive(cc_drive);
-        resonance      = ScaleResonance(cc_drive);
+        resonance      = ScaleResonance(cc_res);
         sub_level      = cc_sub;
         fold_amount    = cc_fold;
         decay_time     = ScaleDecay(cc_decay);
@@ -110,7 +102,7 @@ struct Params {
         float norm = static_cast<float>(cc_val) / 127.0f;
         switch (cc_num) {
             case CC_CUTOFF:   cc_cutoff   = norm; break;
-            case CC_DRIVE:    cc_drive    = norm; break;
+            case CC_RES:      cc_res      = norm; break;
             case CC_SUB:      cc_sub      = norm; break;
             case CC_FOLD:     cc_fold     = norm; break;
             case CC_DECAY:    cc_decay    = norm; break;

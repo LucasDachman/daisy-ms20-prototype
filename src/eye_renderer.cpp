@@ -439,7 +439,7 @@ static constexpr uint8_t FONT_ALPHA[26][3] = {
     {0x1F, 0x10, 0x10},  // L
     {0x00, 0x00, 0x00},  // M
     {0x00, 0x00, 0x00},  // N
-    {0x00, 0x00, 0x00},  // O
+    {0x0E, 0x11, 0x0E},  // O
     {0x00, 0x00, 0x00},  // P
     {0x00, 0x00, 0x00},  // Q
     {0x1F, 0x05, 0x1A},  // R
@@ -510,10 +510,10 @@ void EyeRenderer::DrawNumber(int x, int y, int value) {
 void EyeRenderer::DrawCCValues(const Params& p) {
     // Top row: CCs 1-4 (cutoff, drive, sub, fold)
     // Bottom row: CCs 5-8 (decay, amp_env, filt_env, fx) + gain
-    const float top_val[4] = {p.cc_cutoff, p.cc_drive, p.cc_sub, p.cc_fold};
+    const float top_val[4] = {p.cc_cutoff, p.cc_res, p.cc_sub, p.cc_fold};
     const float bot_val[4] = {p.cc_decay, p.cc_amp_env, p.cc_filt_env, p.cc_fx};
-    static constexpr char top_lbl[4][3] = {"CT", "DR", "SB", "FL"};
-    static constexpr char bot_lbl[4][3] = {"DC", "AE", "FE", "FX"};
+    static constexpr char top_lbl[4][3] = {"CT", "RS", "SB", "FL"};
+    static constexpr char bot_lbl[4][3] = {"DC", "AE", "FE", "OD"};
 
     for (int i = 0; i < 4; i++) {
         int x = i * 32;
@@ -596,7 +596,7 @@ void EyeRenderer::Render(const Params& p) {
     ClearPupil(pupil_r);
     DrawCatchlight(pupil_r);
     ClipToLids(open_top, open_bot);
-    DrawLashes(open_top, p.cc_drive);
+    DrawLashes(open_top, p.cc_res);
     DrawLightning(ray_intensity);
     DrawCCValues(p);
 }

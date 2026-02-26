@@ -45,7 +45,7 @@ static inline float& PotTarget(Params& p, int pot) {
     switch (pot) {
         case 0: return p.cc_fold;      // A0/D15 — top-right
         case 1: return p.cc_sub;       // A1/D16
-        case 2: return p.cc_drive;     // A2/D17
+        case 2: return p.cc_res;       // A2/D17
         case 3: return p.cc_cutoff;    // A3/D18 — top-left
         case 4: return p.cc_decay;     // A4/D19 — bottom-left
         case 5: return p.cc_amp_env;   // A5/D20
