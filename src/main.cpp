@@ -1,7 +1,7 @@
 // =============================================================================
 // main.cpp — DaisyMS20 Prototype
 // =============================================================================
-// Monophonic MS-20 filter synth. MIDI in via USB and UART (D14).
+// 4-voice polyphonic MS-20 filter synth. MIDI in via USB and UART (D14).
 // Audio out on pin 18. 8 MIDI CCs control everything. See README.md.
 // =============================================================================
 
@@ -14,6 +14,7 @@
 #include "params.h"
 #include "eye_renderer.h"
 #include "adc_pots.h"
+#include "voice_allocator.h"
 
 using namespace daisy;
 
@@ -23,7 +24,9 @@ using namespace daisy;
 static DaisySeed hw;
 static MidiUartHandler midi_uart;
 static MidiUsbHandler  midi_usb;
-static Voice voice;
+static constexpr int NUM_VOICES = 4;
+static Voice voices[NUM_VOICES];
+static VoiceAllocator<NUM_VOICES> allocator;
 static Params params;
 
 static FxChain fx;
@@ -85,7 +88,10 @@ static void AudioCallback(AudioHandle::InputBuffer in,
                           AudioHandle::OutputBuffer out,
                           size_t size) {
     for (size_t i = 0; i < size; i++) {
-        float sig = voice.Process(params);
+        float sig = 0.0f;
+        for (int v = 0; v < NUM_VOICES; v++)
+            sig += voices[v].Process(params);
+        sig *= (1.0f / NUM_VOICES);
         sig = fx.Process(sig, params.overdrive);
         sig *= params.output_gain;
         out[0][i] = sig;
@@ -106,20 +112,27 @@ static void PollMidi() {
             case NoteOn: {
                 auto note = event.AsNoteOn();
                 if (note.velocity > 0) {
-                    voice.NoteOn(note.note, note.velocity);
+                    int vi = allocator.NoteOn(note.note);
+                    voices[vi].NoteOn(note.note, note.velocity);
                     eye.NoteOn();
                 } else {
-                    voice.NoteOff(note.note);
-                    eye.NoteOff();
-                    hw.SetLed(false);
+                    int vi = allocator.NoteOff(note.note);
+                    if (vi >= 0) voices[vi].NoteOff(note.note);
+                    if (!allocator.AnyGated()) {
+                        eye.NoteOff();
+                        hw.SetLed(false);
+                    }
                 }
                 break;
             }
             case NoteOff: {
                 auto note = event.AsNoteOn();
-                voice.NoteOff(note.note);
-                eye.NoteOff();
-                hw.SetLed(false);
+                int vi = allocator.NoteOff(note.note);
+                if (vi >= 0) voices[vi].NoteOff(note.note);
+                if (!allocator.AnyGated()) {
+                    eye.NoteOff();
+                    hw.SetLed(false);
+                }
                 break;
             }
             case ControlChange: {
@@ -145,20 +158,27 @@ static void PollMidi() {
             case NoteOn: {
                 auto note = event.AsNoteOn();
                 if (note.velocity > 0) {
-                    voice.NoteOn(note.note, note.velocity);
+                    int vi = allocator.NoteOn(note.note);
+                    voices[vi].NoteOn(note.note, note.velocity);
                     eye.NoteOn();
                 } else {
-                    voice.NoteOff(note.note);
-                    eye.NoteOff();
-                    hw.SetLed(false);
+                    int vi = allocator.NoteOff(note.note);
+                    if (vi >= 0) voices[vi].NoteOff(note.note);
+                    if (!allocator.AnyGated()) {
+                        eye.NoteOff();
+                        hw.SetLed(false);
+                    }
                 }
                 break;
             }
             case NoteOff: {
                 auto note = event.AsNoteOn();
-                voice.NoteOff(note.note);
-                eye.NoteOff();
-                hw.SetLed(false);
+                int vi = allocator.NoteOff(note.note);
+                if (vi >= 0) voices[vi].NoteOff(note.note);
+                if (!allocator.AnyGated()) {
+                    eye.NoteOff();
+                    hw.SetLed(false);
+                }
                 break;
             }
             case ControlChange: {
@@ -186,7 +206,9 @@ int main(void) {
 
     float sample_rate = hw.AudioSampleRate();
 
-    voice.Init(sample_rate);
+    for (int i = 0; i < NUM_VOICES; i++)
+        voices[i].Init(sample_rate);
+    allocator.Init();
     fx.Init(sample_rate);
     params.Update();
 
